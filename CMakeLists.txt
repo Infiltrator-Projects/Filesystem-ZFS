@@ -17,12 +17,15 @@ add_library(zfs-driver SHARED
   native/zfs_native.c
   native/zfs_analysis.c
   native/zfs_worker.c
-  module/zfs_module.c)
+  module/zfs_module.c
+  module/zfs_fixture_bridge.c
+  fixtures/zfs_codec.c)
 set_source_files_properties(native/zfs_worker.c
   PROPERTIES COMPILE_DEFINITIONS "main=ifs_zfs_worker_main")
 set_target_properties(zfs-driver PROPERTIES PREFIX "" OUTPUT_NAME "ZFS" SUFFIX ".so")
 target_include_directories(zfs-driver PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/native"
+  "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/compat"
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
   "${CMAKE_CURRENT_BINARY_DIR}")

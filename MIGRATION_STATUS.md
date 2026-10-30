@@ -5,5 +5,8 @@ regression suite is compiled directly against this module. The application
 loads the versioned interface from its trusted module host; it no longer
 compiles the ZFS engine locally. Exact analysis remains read-only and limited
 to independently verified ZFS configurations; no defrag or write support is
-advertised. **Test Media ZFS fixture-code extraction is a separate migration
-step and must not be counted as completed by this commit.**
+advertised. The exact ZFS Test Media formatter and independent verifier are now also compiled
+into ZFS.so. The calling application supplies generic corpus planning, I/O and
+verification callbacks, while the module owns every ZFS-specific record. The
+consumer's real end-to-end fixture and map tests are required before qualifying
+this migration. No external mkfs tools are called.
