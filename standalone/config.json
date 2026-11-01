@@ -1,0 +1,7 @@
+{
+  "repository": "Filesystem-ZFS",
+  "module": "ZFS.so",
+  "pdf": "docs/ZFS.pdf",
+  "abi": "infiltrator_filesystem_zfs_v1",
+  "build_system": "cmake"
+}
