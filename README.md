@@ -4,7 +4,7 @@ Independent filesystem implementation for InfiltratorOS, using the shared Common
 ## Installer files
 
 - `/System/Filesystems/ZFS.so`
-- `/System/Resources/Documentation/Filesystem-ZFS/ZFS.pdf`
+- `/System/Resources/Documentation/Filesystem-ZFS.pdf`
 
 The current package builds the shared object and generates the PDF. A standalone kernel module is pending.
 
