@@ -157,3 +157,53 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 512.0 Tm (https://openzfs.github.io
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 483.0 Tm (The InfiltratorOS shared-object module, optional kernel adapter, native builder and) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 466.0 Tm (release-specific tests are a separate implementation. A successful document build or) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 449.0 Tm (package installation does not qualify physical writes, recovery, kernel mounting or boot.) Tj ET
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+0.75 0.82 0.85 RG .7 w 50 49 m 545 49 l S
+BT /F2 9 Tf 0.62 0.88 0.91 rg 1 0 0 1 50 800 Tm (INFILTRATOR / ORIGINAL FILESYSTEM ENGINEERING APPENDIX) Tj ET
+BT /F2 19 Tf 1 1 1 rg 1 0 0 1 50 770 Tm (ZFS / engineering detail) Tj ET
+BT /F1 8 Tf 0.3 0.39 0.42 rg 1 0 0 1 50 34 Tm (Original format research; consult primary references for normative fields) Tj ET
+BT /F1 8 Tf 0.3 0.39 0.42 rg 1 0 0 1 509 34 Tm (PAGE 09) Tj ET
+BT /F2 13.5 Tf 0.02 0.44 0.50 rg 1 0 0 1 50 710 Tm (DISK READ PATH / ENGINEERING NOTES) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 678 Tm (1. Read the pool's virtual-device configuration from device labels. The physical disks,) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 661.5 Tm (mirror or RAIDZ arrangement must be known before translating any logical block.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 635 Tm (2. Inspect the uberblock rings and select a valid committed transaction-group state; an) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 618.5 Tm (older valid root may remain available after an interrupted update.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 592 Tm (3. Follow the committed uberblock to the Meta Object Set, then to datasets, object sets) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 575.5 Tm (and their dnodes rather than expecting a traditional fixed inode table.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 549 Tm (4. Decode each block pointer's logical and physical sizes, birth transaction, checksum) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 532.5 Tm (and compression information to locate and validate the child block.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 506 Tm (5. Use metaslab allocation maps and spacemaps to interpret free space. A file's pathname) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 489.5 Tm (is not enough to determine whether a particular physical sector is in use.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 463 Tm (6. Recognise that multiple datasets and snapshots can retain earlier block versions.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 446.5 Tm (Reclaiming a block requires resolving all live references.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 420 Tm (7. Distinguish data vdevs from log, cache, spare and special allocation classes; not all) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 403.5 Tm (devices in a pool store the same kind of persistent user data.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 377 Tm (8. Interpret ZAP objects, indirect blocks and bonus buffers in the context of each object) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 360.5 Tm (type. A generic B-tree parser cannot directly replace the ZFS object model.) Tj ET
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+0.75 0.82 0.85 RG .7 w 50 49 m 545 49 l S
+BT /F2 9 Tf 0.62 0.88 0.91 rg 1 0 0 1 50 800 Tm (INFILTRATOR / ORIGINAL FILESYSTEM ENGINEERING APPENDIX) Tj ET
+BT /F2 19 Tf 1 1 1 rg 1 0 0 1 50 770 Tm (ZFS / engineering detail) Tj ET
+BT /F1 8 Tf 0.3 0.39 0.42 rg 1 0 0 1 50 34 Tm (Original format research; consult primary references for normative fields) Tj ET
+BT /F1 8 Tf 0.3 0.39 0.42 rg 1 0 0 1 509 34 Tm (PAGE 10) Tj ET
+BT /F2 13.5 Tf 0.02 0.44 0.50 rg 1 0 0 1 50 710 Tm (VALIDATION, RECOVERY AND COMPATIBILITY) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 678 Tm (1. Never choose a newer-looking uberblock without verifying its checksum, transaction) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 661.5 Tm (group and reachable object graph.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 635 Tm (2. Check block-pointer checksums on the correct logical or physical bytes as specified by) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 618.5 Tm (the checksum and compression algorithms.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 592 Tm (3. Distinguish pool-level vdev redundancy from dataset-level copies. One readable block) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 575.5 Tm (is not evidence that all replicas or RAIDZ stripes are sound.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 549 Tm (4. Import and feature compatibility require knowledge of supported features-for-read and) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 532.5 Tm (active feature flags; a higher on-disk feature set may prohibit writes.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 506 Tm (5. An interrupted transaction may leave blocks allocated but unreachable from the) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 489.5 Tm (committed uberblock; they are not automatically live filesystem contents.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 463 Tm (6. Verify the ashift and sector alignment constraints of the vdev configuration. Logical) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 446.5 Tm (record size and underlying physical sector size are different concepts.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 420 Tm (7. Snapshots and clones can retain old block pointers; do not classify those blocks as) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 403.5 Tm (lost merely because the current head dataset no longer references them.) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 377 Tm (8. Keep pool import, scrub, resilver and destructive repair separate. Each operates on) Tj ET
+BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 360.5 Tm (different evidence and carries different risk.) Tj ET
