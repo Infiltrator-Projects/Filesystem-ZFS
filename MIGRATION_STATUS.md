@@ -35,3 +35,31 @@ blocks non-contiguously, and the exact 10% adjacent post-file reserve needs
 a separate, provable contract. Do not simply mark `IFS_ZFS_CAP_RUN` as
 Defragment support or change the GUI to report production qualification
 without a native writer and independent fault-injection tests.
+
+## Generic Defragmenter integration target (2026-11-07)
+
+Defragmenter now owns the new generic, **read-only**
+`ld_generic_layout_plan` placement policy. ZFS.so should **not** gain its
+own competing file-packing/Growth Defrag scheduler.
+
+The missing ZFS translation contract is:
+
+1. Export an exact per-file/object inventory, ordered with stable identifiers,
+   allocation units, extents, block-pointer provenance and every relevant
+   read-only/clone/snapshot/sharing constraint. The existing native analysis
+   supplies pool-wide counters and ranges but not this complete relocatable
+   per-object catalogue.
+2. Let Defragmenter generate the generic packed or 10%-gap plan. ZFS.so must
+   validate that plan against the actual pool allocator and fail closed if its
+   constraints cannot be met. A generic plan is **not** permission to write.
+3. Supply an in-process, durable ZFS-specific relocation/transaction adapter
+   that stages the replacement blocks and changed parent checksums, publishes
+   a valid transaction group atomically, supports interruption/recovery and
+   independently verifies actual physical placement.
+4. Qualify on deliberately fragmented disposable pools with fault injection,
+   snapshots and shared-block rejection before advertising any Defrag or
+   Growth Defrag capability. Retained-byte checks alone do not count.
+
+Current code is at **step 0 (read-only analysis and fixture creation)**.
+The Defragmenter planner is committed but **not wired to any production SO**;
+there is no working ZFS writer and no new ZFS capability flag in this commit.
