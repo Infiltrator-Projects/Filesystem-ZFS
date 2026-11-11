@@ -62,6 +62,27 @@ static int size_bytes_for_fd(int fd, const struct stat *status, uint64_t *size_b
     return -1;
 }
 
+/* Shared ZFS label reader: one parser; distinct trusted I/O providers. */
+typedef struct {
+    int fd;
+    const IfsFsHostRuntimeV2 *host;
+} ZfsReader;
+
+static ssize_t zfs_reader_read(const ZfsReader *reader, void *buffer,
+                               size_t length, uint64_t offset)
+{
+    if (reader->host) {
+        if (length > UINT32_MAX ||
+            ifs_fs_host_read_bytes_v2(reader->host, offset, buffer,
+                                      (uint32_t)length) != IFS_FS_OK) {
+            errno = EIO;
+            return -1;
+        }
+        return (ssize_t)length;
+    }
+    return ld_pread_full(reader->fd, buffer, length, offset);
+}
+
 static uint64_t label_offset(uint64_t psize, uint32_t label);
 
 typedef struct {
@@ -316,12 +337,12 @@ static bool zfs_parse_nvlist(ZfsXdr *xdr, unsigned depth,
     return true;
 }
 
-static void parse_label_config(int fd, uint64_t psize, LdZfsSummary *summary)
+static void parse_label_config(const ZfsReader *reader, uint64_t psize, LdZfsSummary *summary)
 {
     uint8_t config[ZFS_NVLIST_BYTES];
     const uint64_t offset =
         label_offset(psize, summary->label_index) + ZFS_VDEV_PHYS_OFFSET;
-    const ssize_t count = ld_pread_full(fd, config, sizeof(config), offset);
+    const ssize_t count = zfs_reader_read(reader, config, sizeof(config), offset);
     if (count != (ssize_t)sizeof(config) || config[0] != 1U)
         return;
 
@@ -430,7 +451,7 @@ static bool better_uberblock(uint64_t txg, uint64_t timestamp,
     return timestamp > summary->uberblock_timestamp;
 }
 
-static int scan_labels(int fd, uint64_t psize, LdZfsSummary *summary)
+static int scan_labels(const ZfsReader *reader, uint64_t psize, LdZfsSummary *summary)
 {
     uint8_t bytes[ZFS_UBERBLOCK_SIZE];
 
@@ -441,7 +462,7 @@ static int scan_labels(int fd, uint64_t psize, LdZfsSummary *summary)
             const uint64_t offset =
                 ring + (uint64_t)slot * ZFS_UBERBLOCK_SIZE;
             const ssize_t count =
-                ld_pread_full(fd, bytes, sizeof(bytes), offset);
+                zfs_reader_read(reader, bytes, sizeof(bytes), offset);
             if (count < 0)
                 return -1;
             if ((size_t)count != sizeof(bytes)) {
@@ -513,9 +534,9 @@ int zfs_read_summary(const char *path, LdZfsSummary *summary,
         summary->size_bytes - (summary->size_bytes % ZFS_VDEV_LABEL_SIZE);
     int result = 1;
     if (psize >= (uint64_t)ZFS_VDEV_LABELS * ZFS_VDEV_LABEL_SIZE)
-        result = scan_labels(fd, psize, summary);
+        result = scan_labels(&(ZfsReader){.fd = fd}, psize, summary);
     if (result == 0)
-        parse_label_config(fd, psize, summary);
+        parse_label_config(&(ZfsReader){.fd = fd}, psize, summary);
 
     const int saved_errno = errno;
     (void)close(fd);
@@ -535,6 +556,32 @@ int zfs_read_summary(const char *path, LdZfsSummary *summary,
     if (error != NULL && error_size != 0U)
         error[0] = '\0';
     return 0;
+}
+
+/* Strict Common V2 CORE: host-relative, bounded, read-only ZFS detection.
+ * The existing source-owned label parser is also used for path-based analysis.
+ * No unqualified writable, mount, kernel, or firmware features are exposed. */
+int zfs_read_summary_host_v2(const IfsFsHostRuntimeV2 *host,
+                             LdZfsSummary *summary)
+{
+    uint64_t psize;
+    int result;
+    if (!summary || !ifs_fs_host_v2_valid(host))
+        return IFS_FS_INVALID;
+    memset(summary, 0, sizeof(*summary));
+    summary->size_bytes = host->volume_bytes;
+    psize = host->volume_bytes -
+            (host->volume_bytes % ZFS_VDEV_LABEL_SIZE);
+    if (psize < (uint64_t)ZFS_VDEV_LABELS * ZFS_VDEV_LABEL_SIZE)
+        return IFS_FS_NOT_FOUND;
+    const ZfsReader reader = {.fd = -1, .host = host};
+    result = scan_labels(&reader, psize, summary);
+    if (result < 0)
+        return IFS_FS_IO_ERROR;
+    if (result != 0)
+        return IFS_FS_NOT_FOUND;
+    parse_label_config(&reader, psize, summary);
+    return IFS_FS_OK;
 }
 
 bool zfs_probe(const char *path)
