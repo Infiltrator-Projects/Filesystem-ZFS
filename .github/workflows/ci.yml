@@ -12,48 +12,14 @@ jobs:
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
           cmake --build build --parallel 2
-      - name: Verify actual native parser and exported SO ABI
+      - name: Verify native ZFS parser and Common V2 shared-library ABI
         run: |
+          set -euo pipefail
           ctest --test-dir build --output-on-failure
           test -f build/ZFS.so
-          # The package contract is Common V2. Legacy worker remains until
-          # the read-only ZFS analyser consumer has migrated.
-          nm -D --defined-only build/ZFS.so | grep -E '[[:space:]]infiltrator_filesystem_api_v2
-      - name: Direct install contains only independent ZFS SO and generated manual
-        shell: bash
-        run: |
-          set -euo pipefail
-          stage="$(mktemp -d)"
-          trap 'rm -rf "$stage"' EXIT
-          DESTDIR="$stage" cmake --install build
-          test "$(find "$stage" -type f | wc -l)" -eq 2
-          test -s "$stage/System/Filesystems/ZFS.so"
-          test -s "$stage/System/Resources/Documentation/Filesystem-ZFS.pdf"
-          test "$(head -c 5 "$stage/System/Resources/Documentation/Filesystem-ZFS.pdf")" = '%PDF-'
-          cmp build/Filesystem-ZFS.pdf "$stage/System/Resources/Documentation/Filesystem-ZFS.pdf"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ZFS-so
-          path: build/ZFS.so
-
-          nm -D --defined-only build/ZFS.so | grep -E '[[:space:]]infiltrator_filesystem_zfs_v1
-      - name: Direct install contains only independent ZFS SO and generated manual
-        shell: bash
-        run: |
-          set -euo pipefail
-          stage="$(mktemp -d)"
-          trap 'rm -rf "$stage"' EXIT
-          DESTDIR="$stage" cmake --install build
-          test "$(find "$stage" -type f | wc -l)" -eq 2
-          test -s "$stage/System/Filesystems/ZFS.so"
-          test -s "$stage/System/Resources/Documentation/Filesystem-ZFS.pdf"
-          test "$(head -c 5 "$stage/System/Resources/Documentation/Filesystem-ZFS.pdf")" = '%PDF-'
-          cmp build/Filesystem-ZFS.pdf "$stage/System/Resources/Documentation/Filesystem-ZFS.pdf"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ZFS-so
-          path: build/ZFS.so
-
+          nm -D --defined-only build/ZFS.so | grep -F 'infiltrator_filesystem_api_v2'
+          # Temporary read-only analysis worker until Defragmenter V2 migration.
+          nm -D --defined-only build/ZFS.so | grep -F 'infiltrator_filesystem_zfs_v1'
       - name: Direct install contains only independent ZFS SO and generated manual
         shell: bash
         run: |
