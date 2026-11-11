@@ -41,7 +41,7 @@ if(BUILD_TESTING)
   target_compile_definitions(zfs-native-test PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
   target_include_directories(zfs-native-test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/native")
-  target_link_libraries(zfs-native-test PRIVATE zfs-driver OpenSSL::Crypto)
+  target_link_libraries(zfs-native-test PRIVATE zfs-driver InfiltratrCommon::Common OpenSSL::Crypto)
   add_test(NAME zfs-original-native-regressions COMMAND zfs-native-test)
   add_executable(zfs-module-test tests/test_zfs_module.c)
   target_include_directories(zfs-module-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
