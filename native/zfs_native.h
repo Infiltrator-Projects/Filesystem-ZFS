@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <infiltratr/filesystem_module_v2.h>
 
 typedef enum {
     LD_ZFS_BYTE_ORDER_LITTLE = 1,
@@ -84,6 +85,7 @@ int zfs_read_summary(const char *path, LdZfsSummary *summary,
 int zfs_analyse_exact(const char *path, LdZfsAnalysis *analysis,
                       char *error, size_t error_size);
 void zfs_analysis_destroy(LdZfsAnalysis *analysis);
+int zfs_read_summary_host_v2(const IfsFsHostRuntimeV2 *host, LdZfsSummary *summary);
 bool zfs_probe(const char *path);
 const char *zfs_byte_order_name(const LdZfsSummary *summary);
 
