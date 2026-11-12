@@ -18,8 +18,7 @@ uberblock/label decoder. The advertised profile is **HOSTED only**; probing
 supports aligned 512-byte and 4-KiB-sector hosts and does not write media.
 
 **Not yet a completed V2 migration:** the existing read-only analyser worker
-still uses its retired V1 entry point while the Defragmenter consumer is
+still uses the dedicated analysis interface while the Defragmenter consumer is
 being converted. V2 does not yet expose mount, directory reads, allocation
 mapping, format, repair, relocation, kernel or UEFI capabilities. Do not treat
-an advertised V2 probe as evidence that these operations exist. No V1
-fallback is implemented in the V2 path.
+an advertised V2 probe as evidence that these operations exist. The V2 path has no fallback.
