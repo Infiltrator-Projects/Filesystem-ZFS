@@ -20,12 +20,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.h" "#define LD_VERSION \"${PROJE
 add_library(zfs-driver SHARED
   native/zfs_native.c
   native/zfs_analysis.c
-  native/zfs_worker.c
-  module/zfs_module.c
-  module/zfs_fixture_bridge.c
-  fixtures/zfs_codec.c)
-set_source_files_properties(native/zfs_worker.c
-  PROPERTIES COMPILE_DEFINITIONS "main=ifs_zfs_worker_main")
+  module/zfs_module.c)
 set_target_properties(zfs-driver PROPERTIES PREFIX "" OUTPUT_NAME "ZFS" SUFFIX ".so")
 target_include_directories(zfs-driver PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/native"
@@ -43,6 +38,20 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/native")
   target_link_libraries(zfs-native-test PRIVATE zfs-driver InfiltratrCommon::Common OpenSSL::Crypto)
   add_test(NAME zfs-original-native-regressions COMMAND zfs-native-test)
+  # Preserve the historical ZFS analyser command as a test-only native
+  # executable. It is not installed and is never loaded as a filesystem ABI.
+  add_executable(zfs-worker-regression native/zfs_worker.c)
+  target_include_directories(zfs-worker-regression PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/compat"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_BINARY_DIR}")
+  target_compile_definitions(zfs-worker-regression PRIVATE
+    _GNU_SOURCE _FILE_OFFSET_BITS=64)
+  target_link_libraries(zfs-worker-regression PRIVATE
+    zfs-driver InfiltratrCommon::Common OpenSSL::Crypto)
+  add_test(NAME zfs-analyser-source-preserved
+    COMMAND zfs-worker-regression --version)
   add_executable(zfs-module-test tests/test_zfs_module.c)
   target_include_directories(zfs-module-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
   target_link_libraries(zfs-module-test PRIVATE zfs-driver InfiltratrCommon::Common)

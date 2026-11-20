@@ -18,8 +18,16 @@ jobs:
           ctest --test-dir build --output-on-failure
           test -f build/ZFS.so
           nm -D --defined-only build/ZFS.so | grep -F 'infiltrator_filesystem_api_v2'
-          # Temporary read-only analysis worker until Defragmenter V2 migration.
-          nm -D --defined-only build/ZFS.so | grep -F 'infiltrator_filesystem_zfs_v1'
+          # A Common V2-only binary must not export historical provider,
+          # worker or fixture APIs. Keep their sources for test/migration only.
+          if nm -D --defined-only build/ZFS.so | grep -E 'infiltrator_filesystem_.*_v1|ifs_zfs_(worker_main|fixture_run)|ldtm_raw_'; then
+            echo 'Previous ABI or fixture service leaked into production ZFS.so' >&2
+            exit 1
+          fi
+          if readelf -Ws build/ZFS.so | grep -E 'infiltrator_filesystem_zfs_v1|ifs_zfs_fixture_run'; then
+            echo 'Legacy symbols retained in the shipping ZFS.so' >&2
+            exit 1
+          fi
       - name: Direct install contains only independent ZFS SO and generated manual
         shell: bash
         run: |

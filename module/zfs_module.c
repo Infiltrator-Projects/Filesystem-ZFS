@@ -1,21 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * The real ZFS summary parser, checksum-verified MOS analyser, space-map
- * accounting and worker entrypoint are all compiled into this shared object.
+ * ZFS.so exports the Common V2 filesystem ABI exclusively. Its source-owned
+ * read-only ZFS geometry/metadata engine is retained. The historical
+ * analyser command-line worker remains in source and is exercised by a
+ * separate test-only executable, never embedded as a legacy runtime ABI.
+ *
+ * A probe-only ZFS module must not claim BOOT namespace or firmware support
+ * until ZFS mount/stat/list/read and freestanding execution are qualified.
  */
-#include "ifs_zfs_module_v1.h"
-int ifs_zfs_worker_main(int, char **);
-int ifs_zfs_fixture_run(const void *, const char *, int, const void *);
-static const IfsZfsModuleV1 v1 = {
-    IFS_ZFS_MODULE_V1, sizeof(IfsZfsModuleV1), "zfs",
-    IFS_ZFS_CAP_RUN | IFS_ZFS_CAP_FIXTURE,
-    ifs_zfs_worker_main, ifs_zfs_fixture_run
-};
-const IfsZfsModuleV1 *infiltrator_filesystem_zfs_v1(void) {
-    return &v1;
-}
-
-/* Canonical Common V2. This stage advertises only proven read-only probing.
- * The old analysis worker is retained until its consumer is migrated. */
 #include <infiltratr/filesystem_module_v2.h>
 #include "zfs_native.h"
 

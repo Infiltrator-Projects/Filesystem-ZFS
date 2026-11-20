@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Legacy worker preservation and genuine Common V2 bounded-host qualification.
+ * Genuine Common V2 bounded-host qualification without a previous ABI.
  */
-#include "ifs_zfs_module_v1.h"
 #include <infiltratr/filesystem_module_v2.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -30,15 +29,6 @@ static void put_le64(uint8_t *p, uint64_t value)
 extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
 int main(void)
 {
-    const IfsZfsModuleV1 *legacy = infiltrator_filesystem_zfs_v1();
-    CHECK(legacy && legacy->abi_version == IFS_ZFS_MODULE_V1);
-    CHECK(legacy->structure_bytes >= sizeof(*legacy));
-    CHECK(legacy->format_id && strcmp(legacy->format_id, "zfs") == 0);
-    CHECK(legacy->capabilities == (IFS_ZFS_CAP_RUN | IFS_ZFS_CAP_FIXTURE));
-    CHECK(legacy->run != NULL && legacy->fixture != NULL);
-    char *args[] = {"defragmenter-zfs-worker", "--version", NULL};
-    CHECK(legacy->run(2, args) == 0);
-
     const IfsFsModuleApiV2 *api = infiltrator_filesystem_api_v2();
     CHECK(ifs_fs_api_v2_valid(api, "zfs"));
     CHECK(api->runtime_profiles == IFS_FS_PROFILE_HOSTED);
