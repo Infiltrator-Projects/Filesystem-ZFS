@@ -48,7 +48,16 @@ for name in ('redundant', 'bad-config', 'bad-ring', 'relocated'):
                 disk[other:other + length] = a
 PY
 sha256sum clean.img redundant.img bad-config.img bad-ring.img relocated.img > before
+profiles=()
 for module in "${modules[@]}"; do
+    firmware="$work/reader-${#profiles[@]}.elf"
+    objcopy --dump-section ".infiltrator_boot=$firmware" "$module" "$work/carrier-copy.so"
+    test -s "$firmware"
+    test -z "$(nm -Du "$firmware")"
+    if readelf -dW "$firmware" | grep '(NEEDED)' >/dev/null; then exit 1; fi
+    profiles+=("$module" "$firmware")
+done
+for module in "${profiles[@]}"; do
     "$probe" "$module" clean.img valid
     "$probe" "$module" redundant.img valid
     for copy in bad-config bad-ring relocated; do "$probe" "$module" "$copy.img" corrupt; done

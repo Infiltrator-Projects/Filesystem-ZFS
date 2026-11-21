@@ -19,9 +19,25 @@ set_property(DIRECTORY "${infiltratr_common_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_A
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.h" "#define LD_VERSION \"${PROJECT_VERSION}\"\n")
 # Only the canonical V2 format inspector and Common adapter enter ZFS.so.
 # The historical full analyser stays in a non-installed regression target.
+set(ZFS_FIRMWARE_ELF "${CMAKE_CURRENT_BINARY_DIR}/firmware/ZFS.so")
+add_custom_command(OUTPUT "${ZFS_FIRMWARE_ELF}"
+ COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_CURRENT_SOURCE_DIR}/module/firmware"
+   -B "${CMAKE_CURRENT_BINARY_DIR}/firmware" -DCMAKE_BUILD_TYPE=Release
+   "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}" "-DCOMMON_INCLUDE_DIR=${infiltratr_common_SOURCE_DIR}/include"
+ COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_CURRENT_BINARY_DIR}/firmware"
+ DEPENDS module/firmware/CMakeLists.txt module/firmware/runtime.c module/zfs_module.c
+   native/zfs_disk.c native/zfs_native.h native/zfs_hash.h native/zfs_hash.c
+   "${infiltratr_common_SOURCE_DIR}/include/infiltratr/filesystem_module_v2.h"
+ VERBATIM)
+add_custom_target(zfs-firmware DEPENDS "${ZFS_FIRMWARE_ELF}")
 add_library(zfs-driver SHARED
-  native/zfs_native.c
+  native/zfs_disk.c native/zfs_hash.c
   module/zfs_module.c)
+add_dependencies(zfs-driver zfs-firmware)
+set_property(TARGET zfs-driver APPEND PROPERTY LINK_DEPENDS "${ZFS_FIRMWARE_ELF}")
+add_custom_command(TARGET zfs-driver POST_BUILD
+ COMMAND "${CMAKE_OBJCOPY}" --add-section ".infiltrator_boot=${ZFS_FIRMWARE_ELF}"
+   --set-section-flags .infiltrator_boot=readonly "$<TARGET_FILE:zfs-driver>" VERBATIM)
 set_target_properties(zfs-driver PROPERTIES
   PREFIX "" OUTPUT_NAME "ZFS" SUFFIX ".so" C_VISIBILITY_PRESET hidden)
 target_include_directories(zfs-driver PRIVATE
@@ -34,10 +50,10 @@ target_compile_definitions(zfs-driver PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
 target_compile_options(zfs-driver PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_link_options(zfs-driver PRIVATE -Wl,-z,defs
   "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/module/v2-only.map")
-target_link_libraries(zfs-driver PRIVATE InfiltratrCommon::Common OpenSSL::Crypto)
+target_link_libraries(zfs-driver PRIVATE InfiltratrCommon::Common)
 if(BUILD_TESTING)
   add_library(zfs-historical-analysis-test-support SHARED
-    native/zfs_native.c native/zfs_analysis.c)
+    native/zfs_native.c native/zfs_analysis.c native/zfs_disk.c native/zfs_hash.c)
   target_compile_definitions(zfs-historical-analysis-test-support PRIVATE
     _GNU_SOURCE _FILE_OFFSET_BITS=64)
   target_include_directories(zfs-historical-analysis-test-support PRIVATE
@@ -48,6 +64,11 @@ if(BUILD_TESTING)
     -Wall -Wextra -Wpedantic -Werror)
   target_link_libraries(zfs-historical-analysis-test-support PRIVATE
     InfiltratrCommon::Common OpenSSL::Crypto)
+  add_executable(zfs-hash-test tests/test_zfs_hash.c native/zfs_hash.c)
+  target_include_directories(zfs-hash-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${infiltratr_common_SOURCE_DIR}/include")
+  target_link_libraries(zfs-hash-test PRIVATE OpenSSL::Crypto)
+  add_test(NAME zfs-sha256-openssl-oracle COMMAND zfs-hash-test)
   add_executable(zfs-v2-media tests/test_zfs_v2_media.c)
   target_include_directories(zfs-v2-media PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
   target_compile_options(zfs-v2-media PRIVATE -Wall -Wextra -Wpedantic -Werror)

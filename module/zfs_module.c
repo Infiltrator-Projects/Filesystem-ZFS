@@ -4,8 +4,8 @@
  * analyser command-line worker remains in source and is exercised by a
  * separate test-only executable, never embedded as a legacy runtime ABI.
  *
- * A probe-only ZFS module must not claim BOOT namespace or firmware support
- * until ZFS mount/stat/list/read and freestanding execution are qualified.
+ * Both builds use the same label verification code. The operation mask
+ * reflects the pool probe and does not advertise a dataset namespace.
  */
 #include <infiltratr/filesystem_module_v2.h>
 #include "zfs_native.h"
@@ -37,7 +37,11 @@ static const IfsFsModuleApiV2 zfs_api_v2 = {
     .abi_version = IFS_FS_COMMON_ABI_V2,
     .structure_bytes = sizeof(IfsFsModuleApiV2),
     .format_id = "zfs",
+#ifdef IFS_ZFS_FIRMWARE
+    .runtime_profiles = IFS_FS_PROFILE_FREESTANDING | IFS_FS_PROFILE_FIRMWARE,
+#else
     .runtime_profiles = IFS_FS_PROFILE_HOSTED,
+#endif
     .group_mask = IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE),
     .query_group = zfs_query_v2
 };

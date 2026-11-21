@@ -13,17 +13,30 @@
 typedef struct {
     int fd;
     uint32_t sector;
+    int fail_io, fail_alloc, outstanding;
 } Device;
 
 static int read_at(void *ctx, uint64_t offset, void *out, uint32_t bytes)
 {
     Device *device = ctx;
-    if (!bytes || bytes > device->sector || bytes % device->sector || offset % device->sector)
+    if (device->fail_io || !bytes || bytes > device->sector || bytes % device->sector || offset % device->sector)
         return -1;
     return pread(device->fd, out, bytes, (off_t)offset) == (ssize_t)bytes ? 0 : -1;
 }
-static void *allocate(void *ctx, size_t n) { (void)ctx; return malloc(n); }
-static void release(void *ctx, void *p) { (void)ctx; free(p); }
+static void *allocate(void *ctx, size_t n)
+{
+    Device *device = ctx;
+    if (device->fail_alloc) return NULL;
+    void *p = malloc(n);
+    if (p) ++device->outstanding;
+    return p;
+}
+static void release(void *ctx, void *p)
+{
+    Device *device = ctx;
+    if (p) --device->outstanding;
+    free(p);
+}
 
 int main(int argc, char **argv)
 {
@@ -39,6 +52,11 @@ int main(int argc, char **argv)
     const IfsFsModuleApiV2 *api = entry();
     if (!ifs_fs_api_v2_valid(api, "zfs")) return 1;
     const IfsFsCoreOpsV2 *core = (const void *)ifs_fs_group_v2(api, IFS_FS_GROUP_CORE);
+    const char *suffix = strrchr(argv[1], '.');
+    uint64_t profile = suffix && !strcmp(suffix, ".elf") ?
+        IFS_FS_PROFILE_FIRMWARE | IFS_FS_PROFILE_FREESTANDING : IFS_FS_PROFILE_HOSTED;
+    if (api->runtime_profiles != profile || !core || !core->probe ||
+        core->header.capabilities != IFS_FS_CORE_PROBE || core->mount || core->read) return 1;
     Device device = {.fd = open(argv[2], O_RDONLY)};
     struct stat st;
     if (device.fd < 0 || fstat(device.fd, &st) || !S_ISREG(st.st_mode)) return 1;
@@ -56,6 +74,13 @@ int main(int argc, char **argv)
                     argv[2], status, expected, device.sector);
             return 1;
         }
+        if (device.outstanding) return 1;
+        device.fail_alloc = 1;
+        if (core->probe(&host, &endian) != IFS_FS_NO_MEMORY || endian || device.outstanding) return 1;
+        device.fail_alloc = 0;
+        device.fail_io = 1;
+        if (core->probe(&host, &endian) != IFS_FS_IO_ERROR || endian || device.outstanding) return 1;
+        device.fail_io = 0;
     }
     close(device.fd);
     return dlclose(module) != 0;
