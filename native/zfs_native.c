@@ -337,14 +337,20 @@ static bool zfs_parse_nvlist(ZfsXdr *xdr, unsigned depth,
     return true;
 }
 
-static void parse_label_config(const ZfsReader *reader, uint64_t psize, LdZfsSummary *summary)
+static int parse_label_config(const ZfsReader *reader, uint64_t psize, LdZfsSummary *summary)
 {
     uint8_t config[ZFS_NVLIST_BYTES];
     const uint64_t offset =
         label_offset(psize, summary->label_index) + ZFS_VDEV_PHYS_OFFSET;
     const ssize_t count = zfs_reader_read(reader, config, sizeof(config), offset);
-    if (count != (ssize_t)sizeof(config) || config[0] != 1U)
-        return;
+    /* Distinguish unreadable media from absent/unsupported NVLIST data.
+     * A committed uberblock cannot make a failed configuration read OK. */
+    if (count != (ssize_t)sizeof(config)) {
+        if (count >= 0) errno = EIO;
+        return -1;
+    }
+    if (config[0] != 1U)
+        return 0;
 
     ZfsXdr xdr = {
         .data = config,
@@ -369,6 +375,7 @@ static void parse_label_config(const ZfsReader *reader, uint64_t psize, LdZfsSum
             summary->top_vdev_asize != 0U &&
             summary->mos_features_supported;
     }
+    return 0;
 }
 
 static uint64_t load_u64(const uint8_t *data, LdZfsByteOrder byte_order)
@@ -535,8 +542,9 @@ int zfs_read_summary(const char *path, LdZfsSummary *summary,
     int result = 1;
     if (psize >= (uint64_t)ZFS_VDEV_LABELS * ZFS_VDEV_LABEL_SIZE)
         result = scan_labels(&(ZfsReader){.fd = fd}, psize, summary);
-    if (result == 0)
-        parse_label_config(&(ZfsReader){.fd = fd}, psize, summary);
+    if (result == 0 &&
+        parse_label_config(&(ZfsReader){.fd = fd}, psize, summary) != 0)
+        result = -1;
 
     const int saved_errno = errno;
     (void)close(fd);
@@ -580,7 +588,8 @@ int zfs_read_summary_host_v2(const IfsFsHostRuntimeV2 *host,
         return IFS_FS_IO_ERROR;
     if (result != 0)
         return IFS_FS_NOT_FOUND;
-    parse_label_config(&reader, psize, summary);
+    if (parse_label_config(&reader, psize, summary) != 0)
+        return IFS_FS_IO_ERROR;
     return IFS_FS_OK;
 }
 

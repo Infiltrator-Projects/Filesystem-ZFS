@@ -7,11 +7,19 @@
 #include <stdlib.h>
 #include <string.h>
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "ZFS ABI test failed: %s at %d\n", #x, __LINE__); return 1; } } while (0)
-typedef struct { uint8_t *image; uint64_t length; uint32_t sector; int fail; } Image;
+typedef struct {
+    uint8_t *image;
+    uint64_t length;
+    uint32_t sector;
+    int fail;
+    int fail_config;
+} Image;
 static int image_read(void *opaque, uint64_t at, void *dst, uint32_t bytes)
 {
     Image *image = (Image *)opaque;
-    if (image->fail || at % image->sector || bytes % image->sector ||
+    if (image->fail ||
+        (image->fail_config && at >= 16384u && at < 131072u) ||
+        at % image->sector || bytes % image->sector ||
         bytes > image->sector || at > image->length ||
         bytes > image->length - at) return -1;
     memcpy(dst, image->image + at, bytes);
@@ -72,6 +80,13 @@ int main(void)
     host.maximum_transfer_bytes = 4096u;
     image.sector = 4096u;
     CHECK(ifs_fs_host_v2_valid(&host));
+    CHECK(core->probe(&host, &variant) == IFS_FS_OK && variant == 1u);
+    /* The first vdev config is read only after finding an uberblock.
+     * Its I/O failure must propagate, not be hidden as an empty nvlist. */
+    image.fail_config = 1;
+    variant = 77u;
+    CHECK(core->probe(&host, &variant) == IFS_FS_IO_ERROR && variant == 0u);
+    image.fail_config = 0;
     CHECK(core->probe(&host, &variant) == IFS_FS_OK && variant == 1u);
     image.fail = 1;
     CHECK(core->probe(&host, &variant) == IFS_FS_IO_ERROR);
