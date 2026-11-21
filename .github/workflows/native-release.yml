@@ -41,6 +41,15 @@ jobs:
           dpkg-deb -x "$deb" "$RUNNER_TEMP/native-root"
           test "$(find "$RUNNER_TEMP/native-root" -type f | wc -l)" = 2
           bash tests/check_v2_exports.sh "$RUNNER_TEMP/native-root/System/Filesystems/ZFS.so"
+      - name: Probe valid, damaged and relocated OpenZFS labels through both packaged modules
+        run: |
+          set -euo pipefail
+          cmake -S . -B build/qualification -DBUILD_TESTING=ON
+          cmake --build build/qualification --target zfs-v2-media
+          dpkg-deb -x dist/*.deb "$RUNNER_TEMP/zfs-portable"
+          bash tests/openzfs-labels.sh build/qualification/zfs-v2-media \
+            "$RUNNER_TEMP/zfs-portable/System/Filesystems/ZFS.so" \
+            "$RUNNER_TEMP/native-root/System/Filesystems/ZFS.so"
       - uses: actions/upload-artifact@v4
         with:
           name: ZFS-hosted-probe-only-not-BOOT-qualified

@@ -3,6 +3,7 @@
  */
 #include <infiltratr/filesystem_module_v2.h>
 #include <stdint.h>
+#include "zfs_label_fixture.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,32 @@ static void put_le64(uint8_t *p, uint64_t value)
     unsigned i;
     for (i = 0u; i < 8u; ++i) p[i] = (uint8_t)(value >> (8u * i));
 }
+/* Minimal XDR nvlist for a recognised pool member. A volume mount would
+ * additionally require a supported topology and valid MOS. */
+static void append_be32(uint8_t **cursor, uint32_t value)
+{
+    for (unsigned i = 0; i < 4; ++i) *(*cursor)++ = (uint8_t)(value >> (24u - i * 8u));
+}
+static void label_config(uint8_t *block)
+{
+    uint8_t *p = block + 4;
+    block[0] = 1;
+    append_be32(&p, 0);
+    append_be32(&p, 1);
+    const char *keys[] = {"pool_guid", "guid", "top_guid"};
+    for (unsigned i = 0; i < 3; ++i) {
+        uint32_t length = (uint32_t)strlen(keys[i]);
+        uint32_t padded = (length + 3u) & ~3u;
+        uint32_t pair = 8u + 4u + padded + 8u + 8u;
+        append_be32(&p, pair); append_be32(&p, pair); append_be32(&p, length);
+        memcpy(p, keys[i], length); p += padded;
+        append_be32(&p, 8u); append_be32(&p, 1u);
+        fixture_word(p, i + 1u, 1); p += 8;
+    }
+    append_be32(&p, 0); append_be32(&p, 0);
+    seal_label(block, 112u * 1024u, 16384u, 0);
+}
+
 extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
 int main(void)
 {
@@ -72,6 +99,22 @@ int main(void)
     put_le64(uberblock, UINT64_C(0x00bab10c));
     put_le64(uberblock + 8u, 5000u);
     put_le64(uberblock + 16u, 42u);
+    CHECK(core->probe(&host, &variant) == IFS_FS_CORRUPT && variant == 0u);
+    label_config(image.image + 16384u);
+    CHECK(core->probe(&host, &variant) == IFS_FS_CORRUPT);
+    seal_label(uberblock, 1024u, 128u * 1024u, 0);
+    CHECK(core->probe(&host, &variant) == IFS_FS_CORRUPT);
+    put_le64(uberblock + 40u, 8u);
+    put_le64(uberblock + 88u, UINT64_C(11) << 48u);
+    put_le64(uberblock + 120u, 42u);
+    seal_label(uberblock, 1024u, 128u * 1024u, 0);
+    CHECK(core->probe(&host, &variant) == IFS_FS_OK);
+    uberblock[31] ^= 1;
+    CHECK(core->probe(&host, &variant) == IFS_FS_CORRUPT);
+    uberblock[31] ^= 1;
+    image.image[16384u + 5000u] ^= 1;
+    CHECK(core->probe(&host, &variant) == IFS_FS_CORRUPT);
+    image.image[16384u + 5000u] ^= 1;
     CHECK(core->probe(&host, &variant) == IFS_FS_OK && variant == 1u);
 
     /* A 4Kn host must never receive a sub-sector read from the module. */

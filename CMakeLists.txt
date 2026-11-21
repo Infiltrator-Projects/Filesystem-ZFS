@@ -48,6 +48,10 @@ if(BUILD_TESTING)
     -Wall -Wextra -Wpedantic -Werror)
   target_link_libraries(zfs-historical-analysis-test-support PRIVATE
     InfiltratrCommon::Common OpenSSL::Crypto)
+  add_executable(zfs-v2-media tests/test_zfs_v2_media.c)
+  target_include_directories(zfs-v2-media PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
+  target_compile_options(zfs-v2-media PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(zfs-v2-media PRIVATE ${CMAKE_DL_LIBS})
   add_executable(zfs-native-test tests/test_zfs_native.c)
   target_compile_definitions(zfs-native-test PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
   target_include_directories(zfs-native-test PRIVATE
@@ -70,7 +74,7 @@ if(BUILD_TESTING)
     COMMAND zfs-worker-regression --version)
   add_executable(zfs-module-test tests/test_zfs_module.c)
   target_include_directories(zfs-module-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-  target_link_libraries(zfs-module-test PRIVATE zfs-driver InfiltratrCommon::Common)
+  target_link_libraries(zfs-module-test PRIVATE OpenSSL::Crypto zfs-driver InfiltratrCommon::Common)
   add_test(NAME zfs-versioned-interface COMMAND zfs-module-test)
   add_test(NAME zfs-v2-only-exports
     COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_v2_exports.sh"

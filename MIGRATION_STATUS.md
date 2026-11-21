@@ -27,3 +27,5 @@ this late I/O failure on aligned 4 KiB host requests, restores media I/O,
 then confirms the same source image is still recognized. No write callbacks
 are used. The ZFS provider remains probe-only: no MOS/dataset namespace,
 freestanding reader, production BOOT acceptance or OVMF qualification.
+
+The hosted probe validates OpenZFS SHA-256 trailers on the vdev configuration and on the selected uberblock. It uses the top-level sector alignment for the ring slots and compares redundant labels by transaction group and timestamp. Independent pool tests exercise an intact image, a single damaged replica, damaged rings and configurations, and configurations relocated between label positions. The firmware namespace remains unimplemented.

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "zfs_native.h"
+#include "zfs_label_fixture.h"
 
 #include <fcntl.h>
 #include <openssl/evp.h>
@@ -12,7 +13,7 @@
 #define IMAGE_BYTES (16U * 1024U * 1024U)
 #define LABEL_SIZE (256U * 1024U)
 #define UBER_RING_OFFSET (128U * 1024U)
-#define UBER_SIZE 1024U
+#define UBER_SIZE 4096U
 #define VDEV_PHYS_OFFSET (16U * 1024U)
 #define VDEV_PHYS_SIZE (112U * 1024U)
 #define DATA_TYPE_BOOLEAN 1U
@@ -216,6 +217,7 @@ static void write_label_config_asize(int fd, unsigned label,
     xw_pair_end(&writer, vdev_tree);
     xw_nvlist_end(&writer);
 
+    seal_label(config, sizeof(config), (uint64_t)label_base(label) + VDEV_PHYS_OFFSET, 0);
     write_all(fd, config, sizeof(config),
               label_base(label) + VDEV_PHYS_OFFSET);
 }
@@ -663,6 +665,7 @@ static off_t write_uber(int fd, unsigned label, unsigned slot, int big,
     }
     const off_t offset = label_base(label) + UBER_RING_OFFSET +
                          (off_t)slot * UBER_SIZE;
+    seal_label(uber, sizeof(uber), (uint64_t)offset, big);
     write_all(fd, uber, sizeof(uber), offset);
     return offset;
 }
@@ -883,7 +886,8 @@ int main(void)
     /* Exercise selection across three committed candidates before the
        same-TXG timestamp tie-breaker below adds a fourth. */
     (void)write_uber(fd, 0U, 2U, 0, 28U, 9U, 77U, 1000U);
-    const off_t best = write_uber(fd, 3U, 127U, 1, 5000U, 42U, 99U, 2000U);
+    for (unsigned label = 1; label < 4; ++label) write_label_config(fd, label, NULL);
+    const off_t best = write_uber(fd, 3U, 31U, 1, 5000U, 42U, 99U, 2000U);
     (void)write_uber(fd, 1U, 8U, 0, 28U, 20U, 88U, 1500U);
     CHECK(zfs_read_summary(path, &summary, error, sizeof(error)) == 0);
     CHECK(summary.uberblock_magic_offset == (uint64_t)best);
@@ -892,7 +896,7 @@ int main(void)
     CHECK(summary.uberblock_guid_sum == 99U);
     CHECK(summary.uberblock_timestamp == 2000U);
     CHECK(summary.label_index == 3U);
-    CHECK(summary.uberblock_slot == 127U);
+    CHECK(summary.uberblock_slot == 31U);
     CHECK(summary.candidate_uberblocks == 3U);
     CHECK(summary.byte_order == LD_ZFS_BYTE_ORDER_BIG);
     CHECK(summary.root_logical_birth == 42U);

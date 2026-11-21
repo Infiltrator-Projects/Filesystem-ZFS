@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/fs.h>
+#include <openssl/evp.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -31,7 +32,6 @@
 #define ZFS_VDEV_PHYS_OFFSET (ZFS_VDEV_PAD_SIZE * 2U)
 #define ZFS_UBERBLOCK_RING_OFFSET (ZFS_VDEV_PAD_SIZE * 2U + ZFS_VDEV_PHYS_SIZE)
 #define ZFS_NVLIST_BYTES ZFS_VDEV_PHYS_SIZE
-#define ZFS_UBERBLOCK_SLOTS (ZFS_UBERBLOCK_RING_SIZE / ZFS_UBERBLOCK_SIZE)
 #define ZFS_UBERBLOCK_MAGIC UINT64_C(0x00bab10c)
 #define ZFS_SPA_VERSION_FEATURES UINT64_C(5000)
 
@@ -337,45 +337,58 @@ static bool zfs_parse_nvlist(ZfsXdr *xdr, unsigned depth,
     return true;
 }
 
+/* Every vdev label and uberblock carries a location-bound SHA-256 trailer.
+ * The block's endianness determines the word order of both the offset
+ * verifier and the four stored digest words. Hash through the trailer magic,
+ * then hash the verifier in place of the checksum. Media remains immutable. */
+#define ZFS_ECK_MAGIC UINT64_C(0x0210da7ab10c7a11)
+#define ZFS_ECK_BYTES 40u
+static int verify_label_checksum(const uint8_t *data, size_t bytes,
+                                 uint64_t offset, LdZfsByteOrder *order)
+{
+    const uint8_t *tail = data + bytes - ZFS_ECK_BYTES;
+    const bool little = infiltratr_load_le64(tail) == ZFS_ECK_MAGIC;
+    if (!little && infiltratr_load_be64(tail) != ZFS_ECK_MAGIC)
+        return IFS_FS_NOT_FOUND;
+    *order = little ? LD_ZFS_BYTE_ORDER_LITTLE : LD_ZFS_BYTE_ORDER_BIG;
+    uint8_t verifier[32] = {0}, digest[EVP_MAX_MD_SIZE];
+    if (little) infiltratr_store_le64(verifier, offset);
+    else infiltratr_store_be64(verifier, offset);
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (!ctx) return IFS_FS_NO_MEMORY;
+    unsigned written = 0;
+    int success = EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) &&
+                  EVP_DigestUpdate(ctx, data, bytes - sizeof(verifier)) &&
+                  EVP_DigestUpdate(ctx, verifier, sizeof(verifier)) &&
+                  EVP_DigestFinal_ex(ctx, digest, &written);
+    EVP_MD_CTX_free(ctx);
+    if (!success || written != sizeof(verifier)) return IFS_FS_IO_ERROR;
+    for (size_t i = 0; i < sizeof(verifier); i += 8) {
+        const uint8_t *word = tail + 8 + i;
+        uint64_t expected = little ? infiltratr_load_le64(word) : infiltratr_load_be64(word);
+        if (expected != infiltratr_load_be64(digest + i)) return IFS_FS_CORRUPT;
+    }
+    return IFS_FS_OK;
+}
+
 static int parse_label_config(const ZfsReader *reader, uint64_t psize, LdZfsSummary *summary)
 {
     uint8_t config[ZFS_NVLIST_BYTES];
-    const uint64_t offset =
-        label_offset(psize, summary->label_index) + ZFS_VDEV_PHYS_OFFSET;
-    const ssize_t count = zfs_reader_read(reader, config, sizeof(config), offset);
-    /* Distinguish unreadable media from absent/unsupported NVLIST data.
-     * A committed uberblock cannot make a failed configuration read OK. */
-    if (count != (ssize_t)sizeof(config)) {
-        if (count >= 0) errno = EIO;
-        return -1;
-    }
-    if (config[0] != 1U)
-        return 0;
-
-    ZfsXdr xdr = {
-        .data = config,
-        .length = sizeof(config),
-        .position = 4U,
-    };
+    const uint64_t offset = label_offset(psize, summary->label_index) + ZFS_VDEV_PHYS_OFFSET;
+    if (zfs_reader_read(reader, config, sizeof(config), offset) != (ssize_t)sizeof(config))
+        return IFS_FS_IO_ERROR;
+    LdZfsByteOrder order;
+    int status = verify_label_checksum(config, sizeof(config), offset, &order);
+    if (status != IFS_FS_OK) return status;
+    if (config[0] != 1U) return IFS_FS_UNSUPPORTED;
+    if (config[1] > 1U || config[2] || config[3]) return IFS_FS_CORRUPT;
+    ZfsXdr xdr = {.data = config, .length = sizeof(config) - ZFS_ECK_BYTES, .position = 4U};
     summary->mos_features_supported = true;
-    if (zfs_parse_nvlist(&xdr, 0U, false, summary)) {
-        summary->config_known = summary->pool_guid != 0U &&
-                                summary->leaf_guid != 0U &&
-                                summary->top_guid != 0U &&
-                                summary->metaslab_vdevs != 0U;
-        summary->single_leaf_supported =
-            summary->config_known &&
-            summary->metaslab_vdevs == 1U &&
-            strcmp(summary->top_vdev_type, "disk") == 0 &&
-            summary->top_vdev_id != UINT64_MAX &&
-            summary->root_vdev == summary->top_vdev_id &&
-            summary->ashift >= 9U && summary->ashift <= 16U &&
-            summary->metaslab_shift >= summary->ashift &&
-            summary->metaslab_shift < 63U &&
-            summary->top_vdev_asize != 0U &&
-            summary->mos_features_supported;
-    }
-    return 0;
+    if (!zfs_parse_nvlist(&xdr, 0U, false, summary) ||
+        !summary->pool_guid || !summary->leaf_guid)
+        return IFS_FS_CORRUPT;
+    summary->config_known = summary->top_guid != 0U && summary->metaslab_vdevs != 0U;
+    return IFS_FS_OK;
 }
 
 static uint64_t load_u64(const uint8_t *data, LdZfsByteOrder byte_order)
@@ -407,10 +420,9 @@ static bool decode_uberblock(const uint8_t bytes[ZFS_UBERBLOCK_SIZE],
     /*
      * A bare magic word is not enough to identify a member.  Real committed
      * uberblocks carry a non-zero transaction group and a recognised SPA
-     * version (legacy versions or feature-flags version 5000).
+     * version. The supported-version policy follows location-bound verification.
      */
-    return *version != 0U && *version <= ZFS_SPA_VERSION_FEATURES &&
-           *txg != 0U;
+    return *version != 0U && *txg != 0U;
 }
 
 static uint64_t label_offset(uint64_t psize, uint32_t label)
@@ -460,49 +472,78 @@ static bool better_uberblock(uint64_t txg, uint64_t timestamp,
 
 static int scan_labels(const ZfsReader *reader, uint64_t psize, LdZfsSummary *summary)
 {
-    uint8_t bytes[ZFS_UBERBLOCK_SIZE];
-
-    for (uint32_t label = 0U; label < ZFS_VDEV_LABELS; ++label) {
-        const uint64_t base = label_offset(psize, label);
-        const uint64_t ring = base + ZFS_UBERBLOCK_RING_OFFSET;
-        for (uint32_t slot = 0U; slot < ZFS_UBERBLOCK_SLOTS; ++slot) {
-            const uint64_t offset =
-                ring + (uint64_t)slot * ZFS_UBERBLOCK_SIZE;
-            const ssize_t count =
-                zfs_reader_read(reader, bytes, sizeof(bytes), offset);
-            if (count < 0)
-                return -1;
-            if ((size_t)count != sizeof(bytes)) {
-                errno = EIO;
-                return -1;
+    /* OpenZFS clamps a ring slot to 1..8 KiB, using the top vdev's ashift.
+     * Reading one 8 KiB window handles all four sizes on 512-byte or 4Kn hosts. */
+    uint8_t window[8192];
+    uint32_t candidates = 0;
+    int no_candidate = IFS_FS_NOT_FOUND;
+    for (uint32_t label = 0; label < ZFS_VDEV_LABELS; ++label) {
+        LdZfsSummary config = {.size_bytes = summary->size_bytes, .label_index = label};
+        int config_status = parse_label_config(reader, psize, &config);
+        if (config_status == IFS_FS_IO_ERROR || config_status == IFS_FS_NO_MEMORY)
+            return config_status;
+        if (config_status == IFS_FS_CORRUPT || config_status == IFS_FS_UNSUPPORTED)
+            no_candidate = config_status;
+        const uint64_t ring = label_offset(psize, label) + ZFS_UBERBLOCK_RING_OFFSET;
+        uint32_t shift = config.ashift < 10u ? 10u : config.ashift > 13u ? 13u : (uint32_t)config.ashift;
+        uint32_t stride = 1u << shift;
+        for (uint32_t relative = 0; relative < ZFS_UBERBLOCK_RING_SIZE; relative += sizeof(window)) {
+            if (zfs_reader_read(reader, window, sizeof(window), ring + relative) != (ssize_t)sizeof(window))
+                return IFS_FS_IO_ERROR;
+            for (uint32_t pos = 0; pos < sizeof(window); pos += stride) {
+                const uint8_t *bytes = window + pos;
+                LdZfsByteOrder order, trailer_order;
+                uint64_t version, txg, guid_sum, timestamp;
+                if (!decode_uberblock(bytes, &order, &version, &txg, &guid_sum, &timestamp))
+                    continue;
+                if (config_status != IFS_FS_OK) {
+                    if (no_candidate == IFS_FS_NOT_FOUND) no_candidate = IFS_FS_CORRUPT;
+                    continue;
+                }
+                uint64_t offset = ring + relative + pos;
+                int status = verify_label_checksum(bytes, stride, offset, &trailer_order);
+                if (status == IFS_FS_NO_MEMORY || status == IFS_FS_IO_ERROR) return status;
+                if (status != IFS_FS_OK || order != trailer_order) {
+                    no_candidate = IFS_FS_CORRUPT;
+                    continue;
+                }
+                if (version > 28U && version != ZFS_SPA_VERSION_FEATURES)
+                    return IFS_FS_UNSUPPORTED;
+                LdZfsSummary candidate = config;
+                decode_root_block_pointer(bytes, order, &candidate);
+                if (candidate.root_embedded) return IFS_FS_UNSUPPORTED;
+                /* A committed MOS root is a non-hole level-zero objset BP.
+                 * Probing does not assert that the dataset itself can be read. */
+                if (!candidate.root_asize || candidate.root_type != 11u || candidate.root_level ||
+                    !candidate.root_logical_birth || candidate.root_logical_birth > txg) {
+                    no_candidate = IFS_FS_CORRUPT;
+                    continue;
+                }
+                if (candidates && (config.pool_guid != summary->pool_guid ||
+                                   config.leaf_guid != summary->leaf_guid))
+                    return IFS_FS_CORRUPT;
+                ++candidates;
+                if (!better_uberblock(txg, timestamp, summary)) continue;
+                *summary = candidate;
+                summary->candidate_uberblocks = candidates;
+                summary->uberblock_magic_offset = offset;
+                summary->uberblock_txg = txg;
+                summary->uberblock_version = version;
+                summary->uberblock_guid_sum = guid_sum;
+                summary->uberblock_timestamp = timestamp;
+                summary->uberblock_slot = (relative + pos) / stride;
+                summary->byte_order = order;
             }
-
-            LdZfsByteOrder byte_order = LD_ZFS_BYTE_ORDER_LITTLE;
-            uint64_t version = 0U;
-            uint64_t txg = 0U;
-            uint64_t guid_sum = 0U;
-            uint64_t timestamp = 0U;
-            if (!decode_uberblock(bytes, &byte_order, &version, &txg,
-                                  &guid_sum, &timestamp))
-                continue;
-
-            if (summary->candidate_uberblocks != UINT32_MAX)
-                summary->candidate_uberblocks++;
-            if (!better_uberblock(txg, timestamp, summary))
-                continue;
-
-            summary->uberblock_magic_offset = offset;
-            summary->uberblock_txg = txg;
-            summary->uberblock_version = version;
-            summary->uberblock_guid_sum = guid_sum;
-            summary->uberblock_timestamp = timestamp;
-            summary->label_index = label;
-            summary->uberblock_slot = slot;
-            summary->byte_order = byte_order;
-            decode_root_block_pointer(bytes, byte_order, summary);
         }
     }
-    return summary->candidate_uberblocks == 0U ? 1 : 0;
+    if (!candidates) return no_candidate;
+    summary->candidate_uberblocks = candidates;
+    summary->single_leaf_supported = summary->config_known && summary->metaslab_vdevs == 1U &&
+        strcmp(summary->top_vdev_type, "disk") == 0 && summary->root_vdev == summary->top_vdev_id &&
+        summary->ashift >= 9U && summary->ashift <= 16U &&
+        summary->metaslab_shift >= summary->ashift && summary->metaslab_shift < 63U &&
+        summary->top_vdev_asize != 0U && summary->mos_features_supported;
+    return IFS_FS_OK;
 }
 
 int zfs_read_summary(const char *path, LdZfsSummary *summary,
@@ -542,15 +583,12 @@ int zfs_read_summary(const char *path, LdZfsSummary *summary,
     int result = 1;
     if (psize >= (uint64_t)ZFS_VDEV_LABELS * ZFS_VDEV_LABEL_SIZE)
         result = scan_labels(&(ZfsReader){.fd = fd}, psize, summary);
-    if (result == 0 &&
-        parse_label_config(&(ZfsReader){.fd = fd}, psize, summary) != 0)
-        result = -1;
 
     const int saved_errno = errno;
     (void)close(fd);
     errno = saved_errno;
 
-    if (result < 0) {
+    if (result == IFS_FS_IO_ERROR) {
         if (error != NULL && error_size != 0U)
             (void)snprintf(error, error_size,
                            "cannot read ZFS vdev labels: %s", strerror(errno));
@@ -573,7 +611,6 @@ int zfs_read_summary_host_v2(const IfsFsHostRuntimeV2 *host,
                              LdZfsSummary *summary)
 {
     uint64_t psize;
-    int result;
     if (!summary || !ifs_fs_host_v2_valid(host))
         return IFS_FS_INVALID;
     memset(summary, 0, sizeof(*summary));
@@ -583,14 +620,7 @@ int zfs_read_summary_host_v2(const IfsFsHostRuntimeV2 *host,
     if (psize < (uint64_t)ZFS_VDEV_LABELS * ZFS_VDEV_LABEL_SIZE)
         return IFS_FS_NOT_FOUND;
     const ZfsReader reader = {.fd = -1, .host = host};
-    result = scan_labels(&reader, psize, summary);
-    if (result < 0)
-        return IFS_FS_IO_ERROR;
-    if (result != 0)
-        return IFS_FS_NOT_FOUND;
-    if (parse_label_config(&reader, psize, summary) != 0)
-        return IFS_FS_IO_ERROR;
-    return IFS_FS_OK;
+    return scan_labels(&reader, psize, summary);
 }
 
 bool zfs_probe(const char *path)
