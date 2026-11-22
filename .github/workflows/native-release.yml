@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: zfs-v2-release-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   qualify:
     runs-on: ubuntu-24.04
@@ -55,3 +58,42 @@ jobs:
           name: ZFS-Common-V2-pool-probe
           path: dist/*
           if-no-files-found: error
+  publish:
+    needs: qualify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ZFS-Common-V2-pool-probe
+          path: dist
+      - name: Publish immutable ZFS Common V2-only pool probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+          version=$(cat VERSION)
+          tag="v$version"
+          test "$(find dist -maxdepth 1 -type f -name '*.deb' | wc -l)" = 1
+          test "$(find dist -maxdepth 1 -type f -name '*.run' | wc -l)" = 1
+          test "$(find dist -maxdepth 1 -type f | wc -l)" = 2
+          test "$(find dist -type f -name '*.ko' | wc -l)" = 0
+          mkdir -p build/release-check
+          dpkg-deb -x dist/*.deb build/release-check
+          test "$(find build/release-check -type f | wc -l)" = 2
+          test -s build/release-check/System/Filesystems/ZFS.so
+          test -s build/release-check/System/Resources/Documentation/Filesystem-ZFS.pdf
+          bash tests/check_v2_exports.sh build/release-check/System/Filesystems/ZFS.so
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Immutable $tag already exists; no replacement."
+            exit 0
+          fi
+          sha256sum dist/*.deb dist/*.run
+          gh release create "$tag" dist/*.deb dist/*.run \
+            --target "$GITHUB_SHA" --title "ZFS Common V2 pool probe $version" \
+            --notes "One Common V2-only ZFS.so and PDF, native source RUN and portable DEB. Hosted/freestanding label, uberblock and pool geometry probing only. No ZFS dataset/file namespace, no BOOT compatibility claim, no filesystem-specific kernel driver."
