@@ -1,31 +1,41 @@
-# ZFS Common V2 migration status
+# ZFS Common V2 migration status — source and release qualification
 
-The real ZFS label/uberblock scanner is currently a **hosted probe-only**
-Common V2 implementation. It may identify a candidate pool with supported
-basic label geometry, but does not mount or traverse the MOS, datasets, object
-sets, dnodes, block pointers, checksums, compression, indirect extents,
-directories, names or file contents. It is not a BOOT filesystem reader and
-must not be presented as one.
+The independent `/System/Filesystems/ZFS.so` production module exports
+**only** `infiltrator_filesystem_api_v2` through the version script in
+`module/v2-only.map`. Its compiled source is limited to
+`native/zfs_disk.c`, `native/zfs_hash.c` and `module/zfs_module.c`.
+The V1 module declaration has been deleted. The original complete ZFS
+analysis, MOS, dnode, ZAP and transactional allocation parsers remain
+source-owned **non-installed test/analyser code**, not a legacy runtime
+filesystem ABI or a substitute Linux VFS implementation.
 
-The installed ZFS.so now links only its source-owned native probe and Common V2
-descriptor, with no historical native analyser or V1 module export. The full
-analysis and CLI sources remain in **non-installed regression tests**.
-The hosted packaging pipeline creates only a V2 SO plus PDF, and no official
-new release is published until the same engine passes freestanding ELF,
-unmodified production BOOT validation, OVMF kernel/initramfs reads, feature
-refusals, corruption and nonmutation tests. This deliberately avoids inventing
-an empty namespace merely to satisfy a validator.
+The Common V2 hosted and freestanding profiles share the exact same
+native label, uberblock and committed pool-geometry probe. They validate
+SHA-256 on known OpenZFS labels and selected uberblocks; account for
+128-entry uberblock rings; propagate failed I/O after finding a pool
+instead of inventing a successful match; and refuse unsupported
+topologies and unknown metadata. Source-owned unit and real-media tests
+cover damaged label replicas, relocated labels, valid and corrupt
+uberblocks, 512 B and 4 KiB host sector alignment, and unchanged media.
 
-## 21 November 2026 — Common V2 label-config I/O errors
+**The production V2 module intentionally advertises only CORE.PROBE.**
+It cannot yet MOUNT, STAT, LIST or READ datasets or files. ZFS has no
+qualified ZAP/dnode native **file namespace reader** in the firmware
+profile, and must not be claimed BOOT-bootable or file-reader complete.
+The existence of source-owned analysis routines is not a substitute
+for implementing those operations under Common V2.
 
-The shared native ZFS label scanner now distinguishes an unreadable or
-short label-configuration read from a missing/unsupported NVLIST. Its
-hosted Common V2 CORE.PROBE returns `IFS_FS_IO_ERROR` when the real host
-fails the configuration read after locating a committed uberblock; previously
-it silently returned a successful probe. A targeted Common V2 test forces
-this late I/O failure on aligned 4 KiB host requests, restores media I/O,
-then confirms the same source image is still recognized. No write callbacks
-are used. The ZFS provider remains probe-only: no MOS/dataset namespace,
-freestanding reader, production BOOT acceptance or OVMF qualification.
+The new source version 1.0.11 replaces the previous v1.0.10 published
+carrier, whose dynamic symbol table failed the strict all-23 Common V2
+release audit. The updated `.deb` and source `.run` may be published
+only after exact-head hosted/freestanding unit, independent pool
+media, packaging and public-export checks pass. Until publication,
+v1.0.10 is **not V2-only qualified**. The dedicated ZFS release
+workflow now contains a gated `publish` job, rather than only
+uploading transient build artifacts.
 
-The hosted probe validates OpenZFS SHA-256 trailers on the vdev configuration and on the selected uberblock. It uses the top-level sector alignment for the ring slots and compares redundant labels by transaction group and timestamp. Independent pool tests exercise an intact image, a single damaged replica, damaged rings and configurations, and configurations relocated between label positions. The firmware namespace remains unimplemented.
+Production BOOT itself is not Common V2-capable; no actual BOOT V2
+validator/OVMF handoff has been qualified. ZFS never receives a
+success designation based on a fabricated empty namespace or disabled
+validation. No BOOT repository, VM, ESP, firmware, kernel or physical
+medium was changed.
