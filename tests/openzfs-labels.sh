@@ -19,6 +19,7 @@ else
     echo '03941b96c88b5e851a89f7e7092f3a62116da7946dbbef315c00f3d26a5e0019  pool.bz2' | sha256sum -c -
     bzip2 -dc pool.bz2 > clean.img
 fi
+if [[ -n ${ZFS_MOS_TEST:-} ]]; then "$ZFS_MOS_TEST" clean.img; fi
 for copy in redundant bad-config bad-ring relocated; do
     cp --sparse=always --reflink=auto clean.img "$copy.img"
 done

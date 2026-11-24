@@ -86,6 +86,9 @@ int zfs_analyse_exact(const char *path, LdZfsAnalysis *analysis,
                       char *error, size_t error_size);
 void zfs_analysis_destroy(LdZfsAnalysis *analysis);
 int zfs_read_summary_host_v2(const IfsFsHostRuntimeV2 *host, LdZfsSummary *summary);
+/* Internal Common V2 MOS bootstrap; does not advertise namespace access. */
+int zfs_read_mos_host_v2(const IfsFsHostRuntimeV2 *host,uint8_t **out,
+                         uint32_t *length,LdZfsByteOrder *data_order);
 bool zfs_probe(const char *path);
 const char *zfs_byte_order_name(const LdZfsSummary *summary);
 

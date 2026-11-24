@@ -31,7 +31,7 @@ add_custom_command(OUTPUT "${ZFS_FIRMWARE_ELF}"
  VERBATIM)
 add_custom_target(zfs-firmware DEPENDS "${ZFS_FIRMWARE_ELF}")
 add_library(zfs-driver SHARED
-  native/zfs_disk.c native/zfs_hash.c
+  native/zfs_disk.c native/zfs_hash.c native/zfs_mos.c
   module/zfs_module.c)
 add_dependencies(zfs-driver zfs-firmware)
 set_property(TARGET zfs-driver APPEND PROPERTY LINK_DEPENDS "${ZFS_FIRMWARE_ELF}")
@@ -69,6 +69,9 @@ if(BUILD_TESTING)
     "${infiltratr_common_SOURCE_DIR}/include")
   target_link_libraries(zfs-hash-test PRIVATE OpenSSL::Crypto)
   add_test(NAME zfs-sha256-openssl-oracle COMMAND zfs-hash-test)
+  add_executable(zfs-mos-test tests/test_zfs_mos.c native/zfs_disk.c native/zfs_hash.c native/zfs_mos.c)
+  target_include_directories(zfs-mos-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${infiltratr_common_SOURCE_DIR}/include")
+  target_compile_options(zfs-mos-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
   add_executable(zfs-v2-media tests/test_zfs_v2_media.c)
   target_include_directories(zfs-v2-media PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
   target_compile_options(zfs-v2-media PRIVATE -Wall -Wextra -Wpedantic -Werror)

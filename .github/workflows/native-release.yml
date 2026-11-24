@@ -48,8 +48,9 @@ jobs:
         run: |
           set -euo pipefail
           cmake -S . -B build/qualification -DBUILD_TESTING=ON
-          cmake --build build/qualification --target zfs-v2-media
+          cmake --build build/qualification --target zfs-v2-media zfs-mos-test
           dpkg-deb -x dist/*.deb "$RUNNER_TEMP/zfs-portable"
+          export ZFS_MOS_TEST="$(realpath build/qualification/zfs-mos-test)"
           bash tests/openzfs-labels.sh build/qualification/zfs-v2-media \
             "$RUNNER_TEMP/zfs-portable/System/Filesystems/ZFS.so" \
             "$RUNNER_TEMP/native-root/System/Filesystems/ZFS.so"
