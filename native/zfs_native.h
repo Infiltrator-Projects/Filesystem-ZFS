@@ -89,6 +89,8 @@ int zfs_read_summary_host_v2(const IfsFsHostRuntimeV2 *host, LdZfsSummary *summa
 /* Internal Common V2 MOS bootstrap; does not advertise namespace access. */
 int zfs_read_mos_host_v2(const IfsFsHostRuntimeV2 *host,uint8_t **out,
                          uint32_t *length,LdZfsByteOrder *data_order);
+int zfs_read_mos_dnode_host_v2(const IfsFsHostRuntimeV2 *host,uint64_t object,
+                             uint8_t out[512],LdZfsByteOrder *data_order);
 bool zfs_probe(const char *path);
 const char *zfs_byte_order_name(const LdZfsSummary *summary);
 

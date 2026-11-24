@@ -46,6 +46,13 @@ int main(int argc,char **argv)
             return 1;
         }
         rel(&m,mos);
+        uint8_t dnode[512];
+        rc=zfs_read_mos_dnode_host_v2(&h,1u,dnode,&order);
+        if(rc!=IFS_FS_OK || dnode[0]!=1u || m.live) {
+            fprintf(stderr,"MOS pool directory dnode failed: rc=%d type=%u live=%u\n",rc,dnode[0],m.live);
+            return 1;
+        }
+        puts("Verified pool directory dnode through checksummed metadnode tree");
         m.fail_mos=1;
         rc=zfs_read_mos_host_v2(&h,&mos,&bytes,&order);
         if(rc==IFS_FS_OK || mos || bytes || m.live)return 1;
