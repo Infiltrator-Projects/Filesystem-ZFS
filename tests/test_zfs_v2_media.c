@@ -13,13 +13,16 @@
 typedef struct {
     int fd;
     uint32_t sector;
+    uint64_t fail_begin,fail_end;
     int fail_io, fail_alloc, outstanding;
 } Device;
 
 static int read_at(void *ctx, uint64_t offset, void *out, uint32_t bytes)
 {
     Device *device = ctx;
-    if (device->fail_io || !bytes || bytes > device->sector || bytes % device->sector || offset % device->sector)
+    if (device->fail_io ||
+        (offset>=device->fail_begin && offset<device->fail_end) ||
+        !bytes || bytes > device->sector || bytes % device->sector || offset % device->sector)
         return -1;
     return pread(device->fd, out, bytes, (off_t)offset) == (ssize_t)bytes ? 0 : -1;
 }
@@ -75,6 +78,16 @@ int main(int argc, char **argv)
             return 1;
         }
         if (device.outstanding) return 1;
+        if (expected==IFS_FS_OK) {
+            /* An unreadable primary 256 KiB label must not hide a real
+             * pool with independent committed copies in its other labels. */
+            device.fail_begin=0;
+            device.fail_end=256u*1024u;
+            endian=0;
+            if (core->probe(&host,&endian)!=IFS_FS_OK ||
+                (endian!=1 && endian!=2) || device.outstanding) return 1;
+            device.fail_begin=device.fail_end=0;
+        }
         device.fail_alloc = 1;
         if (core->probe(&host, &endian) != IFS_FS_NO_MEMORY || endian || device.outstanding) return 1;
         device.fail_alloc = 0;

@@ -416,11 +416,19 @@ static int scan_labels(const IfsFsHostRuntimeV2 *host, uint64_t psize,
     const uint32_t window_bytes = 8192;
     uint32_t candidates = 0;
     int no_candidate = IFS_FS_NOT_FOUND;
+    int unreadable=0;
+    /* The four labels are redundant. An unreadable label or ring window
+     * cannot contribute a verified candidate, but it must not prevent
+     * recognition through independent checksummed copies. This is only
+     * PROBE: it does not establish the newest global TXG or permit writes. */
     for (uint32_t label = 0; label < ZFS_VDEV_LABELS; ++label) {
         LdZfsSummary config = {.size_bytes = summary->size_bytes, .label_index = label};
         int config_status = parse_label_config(host, psize, &config, scratch);
-        if (config_status == IFS_FS_IO_ERROR || config_status == IFS_FS_NO_MEMORY)
-            return config_status;
+        if (config_status == IFS_FS_NO_MEMORY) return config_status;
+        if (config_status == IFS_FS_IO_ERROR) {
+            unreadable=1;
+            continue;
+        }
         if (config_status == IFS_FS_CORRUPT || config_status == IFS_FS_UNSUPPORTED)
             no_candidate = config_status;
         const uint64_t ring = label_offset(psize, label) + ZFS_UBERBLOCK_RING_OFFSET;
@@ -428,7 +436,11 @@ static int scan_labels(const IfsFsHostRuntimeV2 *host, uint64_t psize,
         uint32_t stride = 1u << shift;
         for (uint32_t relative = 0; relative < ZFS_UBERBLOCK_RING_SIZE; relative += window_bytes) {
             int read_status = ifs_fs_host_read_bytes_v2(host, ring + relative, scratch, window_bytes);
-            if (read_status != IFS_FS_OK) return read_status;
+            if (read_status==IFS_FS_IO_ERROR) {
+                unreadable=1;
+                continue;
+            }
+            if (read_status!=IFS_FS_OK) return read_status;
             for (uint32_t pos = 0; pos < window_bytes; pos += stride) {
                 const uint8_t *bytes = scratch + pos;
                 LdZfsByteOrder order, trailer_order;
@@ -441,7 +453,11 @@ static int scan_labels(const IfsFsHostRuntimeV2 *host, uint64_t psize,
                 }
                 uint64_t offset = ring + relative + pos;
                 int status = verify_label_checksum(bytes, stride, offset, &trailer_order);
-                if (status == IFS_FS_NO_MEMORY || status == IFS_FS_IO_ERROR) return status;
+                if (status == IFS_FS_NO_MEMORY) return status;
+                if (status == IFS_FS_IO_ERROR) {
+                    unreadable=1;
+                    continue;
+                }
                 if (status != IFS_FS_OK || order != trailer_order) {
                     no_candidate = IFS_FS_CORRUPT;
                     continue;
@@ -475,7 +491,9 @@ static int scan_labels(const IfsFsHostRuntimeV2 *host, uint64_t psize,
             }
         }
     }
-    if (!candidates) return no_candidate;
+    /* With no verified candidate, incomplete I/O cannot prove absence
+     * or corruption. Preserve the host failure instead of guessing. */
+    if (!candidates) return unreadable ? IFS_FS_IO_ERROR : no_candidate;
     summary->candidate_uberblocks = candidates;
     summary->single_leaf_supported = summary->config_known && summary->metaslab_vdevs == 1U &&
         strcmp(summary->top_vdev_type, "disk") == 0 && summary->root_vdev == summary->top_vdev_id &&
