@@ -34,6 +34,14 @@ int main(int argc,char **argv)
         uint8_t *mos=NULL;uint32_t bytes=0;LdZfsByteOrder order=0;
         int rc=zfs_read_mos_host_v2(&h,&mos,&bytes,&order);
         if(rc!=IFS_FS_OK || !mos || !bytes || m.live!=1u) {
+            LdZfsSummary summary;
+            const int sr=zfs_read_summary_host_v2(&h,&summary);
+            if(sr==IFS_FS_OK)fprintf(stderr,"Topology: type=%s direct=%d config=%d metaslab_vdevs=%u ashift=%llu shift=%llu asize=%llu root_vdev=%llu top_id=%llu checksum=%u compression=%u root_type=%u\n",
+                summary.top_vdev_type,summary.single_leaf_supported,summary.config_known,
+                summary.metaslab_vdevs,(unsigned long long)summary.ashift,
+                (unsigned long long)summary.metaslab_shift,(unsigned long long)summary.top_vdev_asize,
+                (unsigned long long)summary.root_vdev,(unsigned long long)summary.top_vdev_id,
+                summary.root_checksum,summary.root_compression,summary.root_type);
             fprintf(stderr,"MOS root failed: rc=%d sector=%u bytes=%u live=%u\n",rc,m.sector,bytes,m.live);
             return 1;
         }

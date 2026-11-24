@@ -210,7 +210,15 @@ int zfs_read_mos_host_v2(const IfsFsHostRuntimeV2 *h,uint8_t **out,
     LdZfsSummary s;
     int rc=zfs_read_summary_host_v2(h,&s);
     if(rc!=IFS_FS_OK)return rc;
-    if(!s.single_leaf_supported)return IFS_FS_UNSUPPORTED;
+    /* OpenZFS regular-file vdevs use exactly the same offset translation
+     * as raw disk vdevs. Restrict the exception to one direct leaf with
+     * matching GUIDs; do not relax the general allocation reader's policy. */
+    const bool direct_file=s.config_known && s.metaslab_vdevs==1u &&
+        !strcmp(s.top_vdev_type,"file") && s.leaf_guid==s.top_guid &&
+        s.root_vdev==s.top_vdev_id && s.ashift>=9u && s.ashift<=16u &&
+        s.metaslab_shift>=s.ashift && s.metaslab_shift<63u &&
+        s.top_vdev_asize && s.mos_features_supported;
+    if(!s.single_leaf_supported && !direct_file)return IFS_FS_UNSUPPORTED;
     uint8_t ub[1024];
     rc=ifs_fs_host_read_bytes_v2(h,s.uberblock_magic_offset,ub,sizeof(ub));
     if(rc!=IFS_FS_OK)return rc;
