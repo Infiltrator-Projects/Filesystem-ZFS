@@ -24,6 +24,7 @@ static int wr(void *c,uint64_t at,const void *p,uint32_t n)
     ++m->writes;return pwrite(m->fd,p,n,(off_t)at)==(ssize_t)n?0:-1;
 }
 static int fl(void *c){return fsync(((Media*)c)->fd);}
+static int cancelled(void *c){(void)c;return 1;}
 static void *al(void *c,size_t n){Media*m=c;void*p=malloc(n);if(p)++m->live;return p;}
 static void re(void*c,void*p){Media*m=c;if(p)--m->live;free(p);}
 static int rng(void*c,void*p,uint32_t n){(void)c;return getrandom(p,n,0)==(ssize_t)n?0:-1;}
@@ -62,6 +63,11 @@ int main(int argc,char**argv)
     if(rc!=IFS_FS_OK)fprintf(stderr,"native formatter returned %d\n",rc);
     CHECK(rc==IFS_FS_OK && !m.live);
     uint32_t v=0;CHECK(core->probe(&ro,&v)==IFS_FS_OK && v==1u && !m.live);
+    const unsigned prior_writes=m.writes;
+    h.cancelled=cancelled;
+    CHECK(vol->format(&h,1,"replacement",0)==IFS_FS_BUSY);
+    CHECK(m.writes==prior_writes && !m.live);
+    CHECK(core->probe(&ro,&v)==IFS_FS_OK && v==1u);
     puts("Native ZFS format and MOS/dataset verification PASS");result=0;
 done:
     close(m.fd);dlclose(lib);if(result)unlink(argv[2]);return result;

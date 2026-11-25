@@ -310,7 +310,13 @@ static int create_pool(const IfsFsHostRuntimeV2 *h,const char *name)
         rc=IFS_FS_NO_SPACE;goto done;
     }
     memset(label,0,LABEL);
-    for(unsigned i=0;i<4;++i) {
+    /* A cancellation before the first destructive I/O must not enter
+     * the cleanup path, which intentionally revokes all pool labels.
+     * Once a write is attempted, even a reported failure may be partial. */
+    if(h->cancelled && h->cancelled(h->context)){rc=IFS_FS_BUSY;goto done;}
+    rc=ifs_fs_host_write_bytes_v2(h,offsets[0],label,LABEL);
+    if(rc!=IFS_FS_OK)goto failed;
+    for(unsigned i=1;i<4;++i) {
         rc=write_at(h,offsets[i],label,LABEL);if(rc!=IFS_FS_OK)goto failed;
     }
     if(h->flush(h->context)){rc=IFS_FS_IO_ERROR;goto failed;}
