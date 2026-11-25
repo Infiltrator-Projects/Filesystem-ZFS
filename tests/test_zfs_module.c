@@ -67,7 +67,9 @@ int main(void)
     const IfsFsModuleApiV2 *api = infiltrator_filesystem_api_v2();
     CHECK(ifs_fs_api_v2_valid(api, "zfs"));
     CHECK(api->runtime_profiles == IFS_FS_PROFILE_HOSTED);
-    CHECK(api->group_mask == IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE));
+    CHECK(api->group_mask == (IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE)|IFS_FS_GROUP_BIT(IFS_FS_GROUP_VOLUME)));
+    const IfsFsVolumeOpsV2 *vol=(const void *)ifs_fs_group_v2(api,IFS_FS_GROUP_VOLUME);
+    CHECK(vol && vol->format && vol->header.capabilities==IFS_FS_VOLUME_FORMAT);
     const IfsFsCoreOpsV2 *core =
         (const IfsFsCoreOpsV2 *)ifs_fs_group_v2(api, IFS_FS_GROUP_CORE);
     CHECK(core && core->header.capabilities == IFS_FS_CORE_PROBE);

@@ -93,6 +93,9 @@ int zfs_read_mos_dnode_host_v2(const IfsFsHostRuntimeV2 *host,uint64_t object,
                              uint8_t out[512],LdZfsByteOrder *data_order);
 int zfs_read_root_dataset_host_v2(const IfsFsHostRuntimeV2 *host,
     uint64_t *dataset_object,uint8_t **out,uint32_t *bytes,LdZfsByteOrder *data_order);
+/* Hosted, bounded legacy pool creation. No firmware writer. */
+int zfs_format_host_v2(const IfsFsHostRuntimeV2 *host,uint32_t variant,
+                       const char *name,uint32_t flags);
 bool zfs_probe(const char *path);
 const char *zfs_byte_order_name(const LdZfsSummary *summary);
 

@@ -5,7 +5,7 @@
  * separate test-only executable, never embedded as a legacy runtime ABI.
  *
  * Both builds use the same label verification code. The operation mask
- * reflects the pool probe and does not advertise a dataset namespace.
+ * reflects the pool probe and hosted initial formatter; no mounted namespace.
  */
 #include <infiltratr/filesystem_module_v2.h>
 #include "zfs_native.h"
@@ -26,12 +26,22 @@ static const IfsFsCoreOpsV2 zfs_core_v2 = {
                IFS_FS_GROUP_CORE, 0u, IFS_FS_CORE_PROBE},
     .probe = zfs_v2_probe
 };
+#ifndef IFS_ZFS_FIRMWARE
+static const IfsFsVolumeOpsV2 zfs_volume_v2 = {
+    .header={IFS_FS_GROUP_ABI_V2,sizeof(IfsFsVolumeOpsV2),
+             IFS_FS_GROUP_VOLUME,0u,IFS_FS_VOLUME_FORMAT},
+    .format=zfs_format_host_v2
+};
+#endif
 static const IfsFsGroupHeaderV2 *zfs_query_v2(
     uint32_t id, uint32_t minimum, uint32_t maximum)
 {
-    return id == IFS_FS_GROUP_CORE &&
-           minimum <= IFS_FS_GROUP_ABI_V2 &&
-           maximum >= IFS_FS_GROUP_ABI_V2 ? &zfs_core_v2.header : NULL;
+    if(minimum>IFS_FS_GROUP_ABI_V2 || maximum<IFS_FS_GROUP_ABI_V2)return NULL;
+    if(id==IFS_FS_GROUP_CORE)return &zfs_core_v2.header;
+#ifndef IFS_ZFS_FIRMWARE
+    if(id==IFS_FS_GROUP_VOLUME)return &zfs_volume_v2.header;
+#endif
+    return NULL;
 }
 static const IfsFsModuleApiV2 zfs_api_v2 = {
     .abi_version = IFS_FS_COMMON_ABI_V2,
@@ -42,7 +52,11 @@ static const IfsFsModuleApiV2 zfs_api_v2 = {
 #else
     .runtime_profiles = IFS_FS_PROFILE_HOSTED,
 #endif
-    .group_mask = IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE),
+    .group_mask = IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE)
+#ifndef IFS_ZFS_FIRMWARE
+        | IFS_FS_GROUP_BIT(IFS_FS_GROUP_VOLUME)
+#endif
+    ,
     .query_group = zfs_query_v2
 };
 __attribute__((visibility("default")))

@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install source build prerequisites
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential binutils cmake git pkg-config libssl-dev libsqlite3-dev dpkg-dev
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential binutils cmake git pkg-config libssl-dev libsqlite3-dev dpkg-dev zfsutils-linux
       - name: Build and test Common V2 package
         run: |
           set -euo pipefail
@@ -48,12 +48,15 @@ jobs:
         run: |
           set -euo pipefail
           cmake -S . -B build/qualification -DBUILD_TESTING=ON
-          cmake --build build/qualification --target zfs-v2-media zfs-mos-test
+          cmake --build build/qualification --target zfs-v2-media zfs-mos-test zfs-format-test
           dpkg-deb -x dist/*.deb "$RUNNER_TEMP/zfs-portable"
           export ZFS_MOS_TEST="$(realpath build/qualification/zfs-mos-test)"
           bash tests/openzfs-labels.sh build/qualification/zfs-v2-media \
             "$RUNNER_TEMP/zfs-portable/System/Filesystems/ZFS.so" \
             "$RUNNER_TEMP/native-root/System/Filesystems/ZFS.so"
+          for root in "$RUNNER_TEMP/zfs-portable" "$RUNNER_TEMP/native-root"; do
+            sh tests/format-media.sh build/qualification/zfs-format-test "$root/System/Filesystems/ZFS.so" "$(command -v zdb)"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: ZFS-Common-V2-pool-probe
@@ -97,4 +100,4 @@ jobs:
           sha256sum dist/*.deb dist/*.run
           gh release create "$tag" dist/*.deb dist/*.run \
             --target "$GITHUB_SHA" --title "ZFS Common V2 pool probe $version" \
-            --notes "One Common V2-only ZFS.so and PDF, native source RUN and portable DEB. Hosted/freestanding label, uberblock and pool geometry probing only. No ZFS dataset/file namespace, no BOOT compatibility claim, no filesystem-specific kernel driver."
+            --notes "One Common V2-only ZFS.so and PDF, native source RUN and portable DEB. Hosted native legacy single-device pool creation qualified by OpenZFS zdb; hosted/freestanding label and pool geometry probing. No ZFS dataset/file namespace, no BOOT compatibility claim, no filesystem-specific kernel driver."
