@@ -53,6 +53,16 @@ int main(int argc,char **argv)
             return 1;
         }
         puts("Verified pool directory dnode through checksummed metadnode tree");
+        uint64_t dataset=0;
+        rc=zfs_read_root_dataset_host_v2(&h,&dataset,&mos,&bytes,&order);
+        if(rc!=IFS_FS_OK || !dataset || !mos || m.live!=1u) {
+            fprintf(stderr,"Root dataset failed: rc=%d object=%llu live=%u\n",
+                rc,(unsigned long long)dataset,m.live);
+            return 1;
+        }
+        rel(&m,mos);mos=NULL;
+        printf("Verified root dataset object %llu and its filesystem objset\n",
+               (unsigned long long)dataset);
         m.fail_mos=1;
         rc=zfs_read_mos_host_v2(&h,&mos,&bytes,&order);
         if(rc==IFS_FS_OK || mos || bytes || m.live)return 1;

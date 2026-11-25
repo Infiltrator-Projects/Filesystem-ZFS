@@ -312,46 +312,41 @@ int zfs_read_mos_host_v2(const IfsFsHostRuntimeV2 *h,uint8_t **out,
     return open_mos(h,&summary,out,length,data_order);
 }
 
-/* Resolve a MOS object's ordinary 512-byte dnode through the metadnode.
- * Traverse at most twelve levels, verifying every intermediate checksum.
- * A missing pointer is a hole, not an allocated object. Large dnodes are
- * rejected here until the multi-slot object reader has been qualified.
- * This is internal metadata traversal, not a public namespace or mount. */
-int zfs_read_mos_dnode_host_v2(const IfsFsHostRuntimeV2 *h,uint64_t object,
-                             uint8_t out[512],LdZfsByteOrder *data_order)
+/* Read one logical dnode block. Root and indirect addresses are
+ * verified before use; each pointer is decoded in its containing
+ * block's byte order. This helper is shared by MOS and dataset reads. */
+static int object_block(const IfsFsHostRuntimeV2 *h,const LdZfsSummary *summary,
+    const uint8_t dnode[512],LdZfsByteOrder order,uint64_t blockid,
+    uint8_t **out,uint32_t *bytes,LdZfsByteOrder *data_order)
 {
-    if(!out || !data_order || !object || object>UINT64_MAX/512u)
-        return IFS_FS_INVALID;
-    memset(out,0,512u);*data_order=0;
-    LdZfsSummary summary;
-    uint8_t *mos=NULL,*block=NULL;uint32_t length=0;
-    LdZfsByteOrder order=0;
-    int rc=open_mos(h,&summary,&mos,&length,&order);
-    if(rc!=IFS_FS_OK)return rc;
-    const uint32_t blocksize=(uint32_t)word16(mos+8u,order)*512u;
-    const uint64_t offset=object*512u,blockid=offset/blocksize;
-    const uint32_t within=(uint32_t)(offset%blocksize);
-    unsigned level=mos[2]-1u;
+    *out=NULL;*bytes=0;*data_order=0;
+    uint8_t *block=NULL;uint32_t length=0;int rc;
+    if(!dnode[0] || !dnode[2] || dnode[2]>12u ||
+       !dnode[3] || dnode[3]>3u || dnode[12] ||
+       64u+128u*dnode[3]+word16(dnode+10u,order)>512u)
+        return IFS_FS_CORRUPT;
+    const uint32_t blocksize=(uint32_t)word16(dnode+8u,order)*512u;
+    unsigned level=dnode[2]-1u;
     uint64_t entries=1u,span=1u;
     if(blocksize>131072u || blocksize<512u ||
-       blockid>word64(mos+16u,order)){rc=IFS_FS_NOT_FOUND;goto done;}
+       !blocksize || blockid>word64(dnode+16u,order)){rc=IFS_FS_NOT_FOUND;goto done;}
     if(level) {
-        if(mos[1]<12u || mos[1]>17u){rc=IFS_FS_UNSUPPORTED;goto done;}
-        entries=UINT64_C(1)<<(mos[1]-7u);
+        if(dnode[1]<12u || dnode[1]>17u){rc=IFS_FS_UNSUPPORTED;goto done;}
+        entries=UINT64_C(1)<<(dnode[1]-7u);
         for(unsigned i=0;i<level;++i) {
             if(span>UINT64_MAX/entries){rc=IFS_FS_UNSUPPORTED;goto done;}
             span*=entries;
         }
     }
-    if(blockid/span>=mos[3]){rc=IFS_FS_NOT_FOUND;goto done;}
+    if(blockid/span>=dnode[3]){rc=IFS_FS_NOT_FOUND;goto done;}
     uint8_t pointer[128];
-    memcpy(pointer,mos+64u+128u*(blockid/span),sizeof(pointer));
+    memcpy(pointer,dnode+64u+128u*(blockid/span),sizeof(pointer));
     uint64_t remaining=blockid%span;
     for(;;) {
         if(!word64(pointer,order) && !word64(pointer+8u,order)) {
             rc=IFS_FS_NOT_FOUND;goto done;
         }
-        rc=read_metadata_block(h,&summary,pointer,order,10u,level,
+        rc=read_metadata_block(h,summary,pointer,order,dnode[0],level,
                                &block,&length,&order);
         if(rc!=IFS_FS_OK)goto done;
         if(!level)break;
@@ -363,7 +358,29 @@ int zfs_read_mos_dnode_host_v2(const IfsFsHostRuntimeV2 *h,uint64_t object,
         h->release(h->context,block);block=NULL;
         remaining%=span;--level;
     }
-    if(length!=blocksize || within>length-512u){rc=IFS_FS_CORRUPT;goto done;}
+    if(length!=blocksize){rc=IFS_FS_CORRUPT;goto done;}
+    *out=block;*bytes=length;*data_order=order;block=NULL;rc=IFS_FS_OK;
+done:
+    if(block)h->release(h->context,block);
+    return rc;
+}
+
+/* A dnode is addressed through object zero of an object set. Only
+ * allocated single-slot objects are returned by this bounded reader. */
+static int object_dnode(const IfsFsHostRuntimeV2 *h,const LdZfsSummary *summary,
+    const uint8_t meta[512],LdZfsByteOrder order,uint64_t object,
+    uint8_t out[512],LdZfsByteOrder *data_order)
+{
+    memset(out,0,512u);*data_order=0;
+    if(!object || object>UINT64_MAX/512u)return IFS_FS_INVALID;
+    const uint32_t blocksize=(uint32_t)word16(meta+8u,order)*512u;
+    if(!blocksize)return IFS_FS_CORRUPT;
+    const uint64_t offset=object*512u;
+    uint8_t *block=NULL;uint32_t length=0;
+    int rc=object_block(h,summary,meta,order,offset/blocksize,&block,&length,&order);
+    if(rc!=IFS_FS_OK)return rc;
+    const uint32_t within=(uint32_t)(offset%blocksize);
+    if(length<512u || within>length-512u){rc=IFS_FS_CORRUPT;goto done;}
     const uint8_t *dn=block+within;
     if(!dn[0]){rc=IFS_FS_NOT_FOUND;goto done;}
     if(dn[12]){rc=IFS_FS_UNSUPPORTED;goto done;}
@@ -372,6 +389,98 @@ int zfs_read_mos_dnode_host_v2(const IfsFsHostRuntimeV2 *h,uint64_t object,
     }
     memcpy(out,dn,512u);*data_order=order;rc=IFS_FS_OK;
 done:
-    if(block)h->release(h->context,block);
+    h->release(h->context,block);return rc;
+}
+int zfs_read_mos_dnode_host_v2(const IfsFsHostRuntimeV2 *h,uint64_t object,
+                             uint8_t out[512],LdZfsByteOrder *data_order)
+{
+    if(!out || !data_order)return IFS_FS_INVALID;
+    memset(out,0,512u);*data_order=0;
+    LdZfsSummary summary;
+    uint8_t *mos=NULL;uint32_t length=0;LdZfsByteOrder order=0;
+    int rc=open_mos(h,&summary,&mos,&length,&order);
+    if(rc!=IFS_FS_OK)return rc;
+    rc=object_dnode(h,&summary,mos,order,object,out,data_order);
+    h->release(h->context,mos);return rc;
+}
+
+/* The initial legacy pool profile stores its object directory as a
+ * micro-ZAP. Scan every entry, reject unterminated or duplicate names,
+ * and return only a unique exact name match. Fat-ZAP is not guessed. */
+static int microzap_lookup(const IfsFsHostRuntimeV2 *h,const LdZfsSummary *summary,
+    const uint8_t dn[512],LdZfsByteOrder order,const char *name,uint64_t *value)
+{
+    *value=0u;
+    if(word64(dn+16u,order)!=0u)return IFS_FS_UNSUPPORTED;
+    uint8_t *block=NULL;uint32_t length=0;
+    int rc=object_block(h,summary,dn,order,0u,&block,&length,&order);
+    if(rc!=IFS_FS_OK)return rc;
+    if(length<64u || length%64u) {rc=IFS_FS_CORRUPT;goto done;}
+    if(word64(block,order)!=UINT64_C(0x8000000000000003)) {
+        rc=IFS_FS_UNSUPPORTED;goto done;
+    }
+    unsigned found=0;
+    for(uint32_t i=64u;i<length;i+=64u) {
+        const char *key=(const char*)block+i+14u;
+        if(!*key)continue;
+        size_t n=0;
+        while(n<50u && key[n])++n;
+        if(n==50u){rc=IFS_FS_CORRUPT;goto done;}
+        if(strlen(name)==n && !memcmp(key,name,n)) {
+            if(found++){rc=IFS_FS_CORRUPT;goto done;}
+            *value=word64(block+i,order);
+        }
+    }
+    rc=found?IFS_FS_OK:IFS_FS_NOT_FOUND;
+done:
+    if(rc!=IFS_FS_OK)*value=0u;
+    h->release(h->context,block);return rc;
+}
+
+/* Validate the root dataset chain: MOS directory -> DSL directory ->
+ * head dataset -> its checked ZFS object set. This proves the native
+ * reader reaches actual filesystem metadata, not merely valid labels.
+ * No snapshots, encrypted datasets, or writable transactions are exposed. */
+int zfs_read_root_dataset_host_v2(const IfsFsHostRuntimeV2 *h,
+    uint64_t *dataset_object,uint8_t **out,uint32_t *bytes,LdZfsByteOrder *data_order)
+{
+    if(!dataset_object || !out || !bytes || !data_order)return IFS_FS_INVALID;
+    *dataset_object=0;*out=NULL;*bytes=0;*data_order=0;
+    LdZfsSummary summary;uint8_t *mos=NULL;
+    uint32_t length=0;LdZfsByteOrder mos_order=0,order=0;
+    int rc=open_mos(h,&summary,&mos,&length,&mos_order);
+    if(rc!=IFS_FS_OK)return rc;
+    uint8_t dn[512];uint64_t directory=0,head=0;
+    rc=object_dnode(h,&summary,mos,mos_order,1u,dn,&order);
+    if(rc!=IFS_FS_OK)goto done;
+    if(dn[0]!=1u){rc=IFS_FS_CORRUPT;goto done;}
+    rc=microzap_lookup(h,&summary,dn,order,"root_dataset",&directory);
+    if(rc!=IFS_FS_OK)goto done;
+    rc=object_dnode(h,&summary,mos,mos_order,directory,dn,&order);
+    if(rc!=IFS_FS_OK)goto done;
+    if(dn[0]!=12u || dn[4]!=12u || word16(dn+10u,order)<256u) {
+        rc=IFS_FS_CORRUPT;goto done;
+    }
+    const uint8_t *bonus=dn+64u+128u*dn[3];
+    if(word64(bonus+16u,order)){rc=IFS_FS_CORRUPT;goto done;}
+    head=word64(bonus+8u,order);
+    rc=object_dnode(h,&summary,mos,mos_order,head,dn,&order);
+    if(rc!=IFS_FS_OK)goto done;
+    if(dn[0]!=16u || dn[4]!=16u || word16(dn+10u,order)<320u) {
+        rc=IFS_FS_CORRUPT;goto done;
+    }
+    bonus=dn+64u+128u*dn[3];
+    if(word64(bonus,order)!=directory || word64(bonus+40u,order)) {
+        rc=IFS_FS_CORRUPT;goto done;
+    }
+    rc=read_metadata_block(h,&summary,bonus+128u,order,11u,0u,out,bytes,data_order);
+    if(rc!=IFS_FS_OK)goto done;
+    if(*bytes<1024u || (*out)[0]!=10u ||
+       word64(*out+704u,*data_order)!=2u) {
+        h->release(h->context,*out);*out=NULL;*bytes=0;*data_order=0;
+        rc=IFS_FS_CORRUPT;goto done;
+    }
+    *dataset_object=head;
+done:
     h->release(h->context,mos);return rc;
 }
