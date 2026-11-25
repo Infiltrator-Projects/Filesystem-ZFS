@@ -64,7 +64,7 @@ int main(int argc,char**argv)
     CHECK(rc==IFS_FS_OK && !m.live);
     uint32_t v=0;CHECK(core->probe(&ro,&v)==IFS_FS_OK && v==1u && !m.live);
     const unsigned prior_writes=m.writes;
-    h.cancelled=cancelled;
+    h.capabilities|=IFS_FS_HOST_CANCEL;h.cancelled=cancelled;
     CHECK(vol->format(&h,1,"replacement",0)==IFS_FS_BUSY);
     CHECK(m.writes==prior_writes && !m.live);
     CHECK(core->probe(&ro,&v)==IFS_FS_OK && v==1u);
