@@ -1,5 +1,4 @@
 %PDF-1.4
-%‚„œ”
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
 endobj
@@ -185,7 +184,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 19 0 R >>
 endobj
 19 0 obj
-<< /Length 1580 >>
+<< /Length 1565 >>
 stream
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -198,7 +197,7 @@ BT /F2 14 Tf 0.01 0.43 0.49 rg 1 0 0 1 50 713.0 Tm (INFILTRATOROS INTEGRATION BO
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 679.0 Tm (The historical ZFS format and OpenZFS implementation remain independent of the) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 662.0 Tm (InfiltratorOS filesystem catalogue entry. If our ZFS.so exposes only experimental or) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 645.0 Tm (read-only operations, the PDF must not imply complete production Linux support. The) Tj ET
-BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 628.0 Tm (optional `.ko` cannot be claimed qualified without actual kernel module evidence.) Tj ET
+BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 628.0 Tm (generic kernel integration requires actual consumer qualification.) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 599.0 Tm (Defragmentation is especially different from classic FAT: the ZFS allocator owns future) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 582.0 Tm (physical placement. A generic promise to reserve an adjacent extent conflicts with) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 565.0 Tm (transaction, dataset and vdev placement behaviour.) Tj ET
@@ -372,37 +371,37 @@ endobj
 xref
 0 30
 0000000000 65535 f 
-0000000015 00000 n 
-0000000064 00000 n 
-0000000198 00000 n 
-0000000268 00000 n 
-0000000343 00000 n 
-0000000411 00000 n 
-0000000557 00000 n 
-0000003356 00000 n 
-0000003502 00000 n 
-0000005564 00000 n 
-0000005712 00000 n 
-0000007767 00000 n 
-0000007915 00000 n 
-0000009716 00000 n 
-0000009864 00000 n 
-0000011819 00000 n 
-0000011967 00000 n 
-0000013710 00000 n 
-0000013858 00000 n 
-0000015490 00000 n 
-0000015638 00000 n 
-0000017758 00000 n 
-0000017906 00000 n 
-0000020733 00000 n 
-0000020881 00000 n 
-0000023620 00000 n 
-0000023768 00000 n 
-0000026340 00000 n 
-0000026488 00000 n 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000192 00000 n 
+0000000262 00000 n 
+0000000337 00000 n 
+0000000405 00000 n 
+0000000551 00000 n 
+0000003350 00000 n 
+0000003496 00000 n 
+0000005558 00000 n 
+0000005706 00000 n 
+0000007761 00000 n 
+0000007909 00000 n 
+0000009710 00000 n 
+0000009858 00000 n 
+0000011813 00000 n 
+0000011961 00000 n 
+0000013704 00000 n 
+0000013852 00000 n 
+0000015469 00000 n 
+0000015617 00000 n 
+0000017737 00000 n 
+0000017885 00000 n 
+0000020712 00000 n 
+0000020860 00000 n 
+0000023599 00000 n 
+0000023747 00000 n 
+0000026319 00000 n 
+0000026467 00000 n 
 trailer
 << /Size 30 /Root 1 0 R >>
 startxref
-30192
+30171
 %%EOF
