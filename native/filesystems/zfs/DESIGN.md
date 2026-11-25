@@ -1,5 +1,15 @@
 # OpenZFS / ZFS Design and Ownership
 
+## Current production architecture
+
+The provider declares CORE probe and a VOLUME format callback; consult exact hosted masks and qualification for format availability. Hosted and freestanding pool probes share the native label and uberblock reader. The regression advertises cancellation capability. The canonical entry point is `infiltrator_filesystem_api_v2`. Consumers must negotiate the actual profile and operation masks and use bounded, partition-relative host I/O. A source-level callback does not by itself establish that every format variant or host profile is qualified.
+
+The canonical package installs one Common V2 shared object and its technical PDF. The native RUN downloads and verifies the exact source revision. No independent filesystem-specific kernel or EFI driver or FUSE substitute is distributed. See the [current provider README](../../../README.md) for current scope and the linked qualification evidence.
+
+## Historical source and qualification record
+
+> The following material preserves inherited design, original-format semantics, source attribution and earlier qualification evidence. Earlier implementation status, separate driver layouts, packaging instructions and ABI statements are historical, not the present release contract. No new test result is claimed by this record.
+
 ## Classification
 
 ZFS is a pooled copy-on-write filesystem and volume-management stack. It is a
@@ -30,9 +40,9 @@ If ZFS enters first-party development, persistent ZFS semantics belong in this
 directory's canonical `core/`. Linux, Windows and userspace access paths must
 consume that same engine rather than implementing ZFS independently.
 
-## Current implementation state
+## Historical implementation state
 
-ZFS is currently **external-provider / future-native state**.
+ZFS was originally documented as **external-provider / future-native state**.
 
 There is no project-authored ZFS canonical engine, Linux ZFS module, Windows
 ZFS driver or userspace ZFS provider in this directory. Unlike filesystems for
@@ -43,7 +53,7 @@ look populated.
 The old empty `.gitkeep` represented no implementation and is not part of the
 filesystem architecture.
 
-## Current directory contract
+## Historical directory contract
 
 While ZFS remains external-provider / future-native state, the directory
 contains exactly:
