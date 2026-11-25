@@ -239,7 +239,12 @@ static int build_transaction(Plan *p,const char *name,uint64_t pool,
      * zero. The allocated bytes include the space map and final roots. */
     le64(raw,final_used/BLK-1u);
     TRY(put_block(p,raw,BLK,8,2,bp));dnode(DN(14),8,7,24,BLK,bp);
-    le64(DN(14)+192,14);le64(DN(14)+200,8);le64(DN(14)+208,final_used);
+    /* Legacy space maps have a 24-byte bonus in the conventional
+     * three-pointer dnode, yielding a 64-byte bonus capacity. A
+     * one-pointer dnode has 320 bytes of bonus capacity and OpenZFS
+     * interprets that as a feature-enabled histogram space map. */
+    DN(14)[3]=3u;
+    le64(DN(14)+448,14);le64(DN(14)+456,8);le64(DN(14)+464,final_used);
     dsl_dir(DN(3),now,9,0,6,5,final_used);
     dsl_dir(DN(4),now,0,3,8,7,final_used-dataset_used);
     TRY(put_block(p,mos,MOS_TABLE,10,2,bp));
