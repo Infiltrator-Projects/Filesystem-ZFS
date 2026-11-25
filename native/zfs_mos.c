@@ -242,7 +242,7 @@ static int read_metadata_block(const IfsFsHostRuntimeV2 *h,
         if(asize<psize || offset>summary->top_vdev_asize ||
            asize>summary->top_vdev_asize-offset || at>h->volume_bytes ||
            psize>h->volume_bytes-at)continue;
-        rc=ifs_fs_host_read_bytes_v2(h,at,physical,psize);
+        int rc=ifs_fs_host_read_bytes_v2(h,at,physical,psize);
         if(rc!=IFS_FS_OK){last=rc;continue;}
         rc=check_block(physical,psize,checksum,order,expected);
         if(rc!=IFS_FS_OK){last=rc;continue;}
