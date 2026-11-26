@@ -1,3 +1,299 @@
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Scope and layers) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(ZFS, originally developed at Sun Microsystems, integrates storage pooling,) Tj
+T* (logical volume management and a copy-on-write filesystem. The on-disk pool) Tj
+T* (is built from virtual devices \(vdevs\); the storage pool allocator manages) Tj
+T* (blocks, the DMU manages objects and the dataset layer organizes filesystems) Tj
+T* (and snapshots. A filesystem is an object set, not a fixed partition inode) Tj
+T* (table. This guide uses OpenZFS 2.2.7 as a pinned layout reference. Feature) Tj
+T* (flags, encryption, RAIDZ, dRAID, gang blocks and indirect/removal mappings) Tj
+T* (need distinct qualification.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 1 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Physical labels and placement) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Each leaf vdev has four 256 KiB labels: offsets 0, 256 KiB, aligned device) Tj
+T* (size minus 512 KiB and minus 256 KiB. Device size for this calculation is) Tj
+T* (rounded down to label alignment. Label layout: 8 KiB reserved at 0; 8 KiB) Tj
+T* (boot environment at 8192; 112 KiB vdev physical configuration at 16384; 128) Tj
+T* (KiB uberblock ring at 131072. Configuration includes a packed nvlist and) Tj
+T* (embedded checksum trailer. The first two labels plus a 3.5 MiB boot region) Tj
+T* (occupy 4 MiB. The last two labels reserve 512 KiB. Validate all available) Tj
+T* (labels; do not assume the first label is authoritative.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 2 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Configuration and pool topology) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Decode the nvlist serialization according to its encoding and length rules,) Tj
+T* (not as a native pointer-based structure. Configuration includes pool and) Tj
+T* (vdev GUIDs, transaction information, pool state, ashift, top-level vdev) Tj
+T* (identifiers and topology. Match devices by identity, not OS path names.) Tj
+T* (Vdevs can represent leaf disks, mirrors, RAIDZ and other profiles; a DVA) Tj
+T* (names a top-level vdev and a logical offset within it. Use the appropriate) Tj
+T* (topology-specific translation to member reads. Reject incomplete or) Tj
+T* (conflicting configurations where safe reconstruction is not established.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 3 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Uberblocks and committed roots) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Uberblock fields are 64-bit: magic 0x00bab10c at 0, version 8, transaction) Tj
+T* (group \(txg\) 16, GUID sum 24, timestamp 32; 128-byte MOS root block pointer) Tj
+T* (starts 40. Software version 168, multihost magic 176, delay 184,) Tj
+T* (configuration 192 and checkpoint txg 200 follow in the modern structure.) Tj
+T* (Detect byte order from magic and verify embedded checksums with the correct) Tj
+T* (physical-address verifier. Ring slot size follows the version's vdev) Tj
+T* (uberblock shift rule, normally at least 1024 bytes. Select a supported) Tj
+T* (coherent committed txg across valid configuration and root data; a high txg) Tj
+T* (alone does not establish valid ownership or safe import.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 4 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Block pointer byte layout) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(A normal 128-byte block pointer contains three 16-byte DVAs at offsets) Tj
+T* (0,16,32, properties word 48, two padding words 56/64, physical birth 72,) Tj
+T* (logical birth 80, fill count 88 and four 64-bit checksum words at 96. These) Tj
+T* (positions are for the ordinary unencrypted pointer representation; embedded) Tj
+T* (and protected forms reuse fields. Parse in the containing metadata block's) Tj
+T* (byte order. Logical birth and physical birth are not necessarily equal. A) Tj
+T* (zero physical birth field may imply logical birth. Recognize holes and) Tj
+T* (embedded pointers before translating DVAs.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 5 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Block pointer properties) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(For an ordinary block, property bits 0..15 store logical size in 512-byte) Tj
+T* (units minus one; 16..31 store physical size likewise. Bits 32..38) Tj
+T* (compression, 39 embedded, 40..47 checksum, 48..55 object type, 56..60) Tj
+T* (indirect level, 61 protected, 62 dedup and 63 byte order. For example) Tj
+T* (logical size encoding 15 means 8192 bytes; physical size encoding 7 means) Tj
+T* (4096 bytes. Verify supported algorithms and allocation bounds. Embedded) Tj
+T* (pointers have a different size and payload interpretation. The protected bit) Tj
+T* (may denote encryption, authentication or indirect MAC semantics depending on) Tj
+T* (type and level.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 6 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Data virtual addresses and example) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Each ordinary DVA consists of two 64-bit words. Word 0 bits 0..23 allocation) Tj
+T* (size in 512-byte units \(not minus one\), 24..31 grid, 32..63 vdev ID. Word 1) Tj
+T* (low 63 bits encode offset in 512-byte units; high bit marks gang. For a) Tj
+T* (plain leaf vdev, offset 8192 units gives 4 MiB relative to the allocatable) Tj
+T* (region, or 8 MiB from the leaf start after the 4 MiB leading reservation. A) Tj
+T* (DVA's allocation size can differ from block physical size, especially with) Tj
+T* (parity and padding. Mirrors and RAIDZ require topology-aware reads; a gang) Tj
+T* (address points to a gang header, not directly to all user bytes.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 7 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Block read and integrity) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(A reader validates the block pointer and available DVA, maps through the) Tj
+T* (vdev topology, reads the stored physical representation, verifies the) Tj
+T* (applicable checksum or authenticated representation, decompresses to logical) Tj
+T* (size and performs object-type-specific byte swapping as required. Checksum,) Tj
+T* (decompression and cryptographic order must follow the exact ZIO pipeline for) Tj
+T* (the active features. Try valid redundant copies on failure rather than) Tj
+T* (silently returning damaged data. Holes synthesize zeros. A checksum mismatch) Tj
+T* (cannot be repaired by recomputing the checksum over corrupted bytes.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 8 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Object sets and dnode slots) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The MOS root pointer resolves an object set whose first 512 bytes are its) Tj
+T* (meta-dnode. The meta-dnode maps the array of object slots; object number) Tj
+T* (times 512 identifies the nominal slot position. Dnode fields: type 0,) Tj
+T* (indirect shift 1, levels 2, pointer count 3, bonus type 4, checksum 5,) Tj
+T* (compression 6, flags 7, data block size in 512-byte sectors at 8 \(16\), bonus) Tj
+T* (length 10 \(16\), extra slots 12, maximum block ID 16 \(64\), used 24 \(64\).) Tj
+T* (Block pointers begin at 64. A dnode may consume 1+extra_slots slots; do not) Tj
+T* (treat a continuation slot as a separate object. Bonus follows the active) Tj
+T* (pointer array; a spill pointer, if present, occupies the end of the) Tj
+T* (allocated dnode.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 9 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Indirect object lookup) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Let D be the dnode data block size and P=2^indblkshift/128 the pointers per) Tj
+T* (indirect block. For a requested byte offset, logical block) Tj
+T* (ID=floor\(offset/D\), in-block offset=offset mod D. With L levels, a top-level) Tj
+T* (pointer spans P^\(L-1\) data blocks. Divide block ID by that span to select) Tj
+T* (the top pointer; take successive quotient/remainder indices through lower) Tj
+T* (levels. With 16 KiB indirect blocks, P=128. For two levels, block ID 130) Tj
+T* (selects top pointer 1 then index 2, if the dnode has enough pointers.) Tj
+T* (Validate maxblkid, level, expected size and every child pointer. Avoid) Tj
+T* (overflow on exponentiation.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 10 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Dataset hierarchy and snapshots) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The MOS includes dataset and directory objects and ZAP mappings. Resolve the) Tj
+T* (pool directory to the root DSL directory; use child-directory maps to) Tj
+T* (navigate named datasets. A dataset's physical bonus contains directory) Tj
+T* (object 0, previous snapshot object 8, previous snapshot txg 16, next) Tj
+T* (snapshot 24, snapshot-name map 32, creation time 48, creation txg 56,) Tj
+T* (deadlist object 64, referenced/compressed/uncompressed byte totals 72/80/88,) Tj
+T* (unique bytes 96, GUIDs 104/112, flags 120 and object-set root pointer 128.) Tj
+T* (Dataset object IDs belong to the MOS; file objects belong to a dataset) Tj
+T* (object set. Snapshots and clones share block ancestry, so a referenced-byte) Tj
+T* (total is not necessarily unique allocated space.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 11 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (ZAP and filesystem namespace) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The ZFS Attribute Processor maps names or integer keys to typed values.) Tj
+T* (MicroZAP uses a compact fixed-entry representation; FatZAP uses a pointer) Tj
+T* (table, hash-indexed leaves and variable key/value chunks. Select the correct) Tj
+T* (block type and validate table growth, collision chains and array chunks. Use) Tj
+T* (native hash and normalization rules. The filesystem master-node ZAP locates) Tj
+T* (the root directory and other objects. Directory ZAP entries encode object) Tj
+T* (identity and possibly type; resolve file attributes through legacy znode) Tj
+T* (bonus or System Attributes \(SA\) layout registries and optional spill blocks.) Tj
+T* (Do not assume every modern inode uses the historical znode byte layout.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 12 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Allocation, metaslabs and space maps) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Top-level vdevs divide their address space into metaslabs. Space-map objects) Tj
+T* (encode allocation and free ranges using version-specific records; replay) Tj
+T* (those records to reconstruct allocated space, accounting for condensed maps,) Tj
+T* (log space maps and deferred frees. Allocation is constrained by ashift,) Tj
+T* (topology and reservation policy. A file's block pointers alone do not) Tj
+T* (enumerate all metadata, snapshots, pool-wide allocations or deduplicated) Tj
+T* (references. Defragmentation cannot safely relocate a DVA without updating) Tj
+T* (all owning references and preserving birth, checksum and allocation) Tj
+T* (semantics.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 13 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Transaction groups and recovery) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(ZFS batches changes in transaction groups. Sync writes new blocks and) Tj
+T* (metadata before publishing a new uberblock referring to the coherent MOS.) Tj
+T* (Old referenced blocks must not be freed prematurely. The ZFS Intent Log) Tj
+T* (provides recovery for applicable synchronous operations not yet committed in) Tj
+T* (the main txg; it is not a general redo log for every metadata write. Replay) Tj
+T* (requires record-type-specific validation and safe import ownership. A) Tj
+T* (checkpoint is a retained pool state, distinct from a dataset snapshot. Scrub) Tj
+T* (checks and repairs through verified redundancy; it is not the same as) Tj
+T* (arbitrary offline fsck reconstruction.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 14 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Sources and verification) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Primary pinned source:) Tj
+T* (https://github.com/openzfs/zfs/tree/zfs-2.2.7/include/sys \(vdev_impl.h,) Tj
+T* (uberblock_impl.h, spa.h, dnode.h, dmu_objset.h, dsl_dataset.h, zap_impl.h\).) Tj
+T* (Algorithms in https://github.com/openzfs/zfs/tree/zfs-2.2.7/module/zfs .) Tj
+T* (Validate native pools with multiple txgs, different ashift, fragmented) Tj
+T* (objects, holes, snapshots, corrupted redundant blocks and feature admission.) Tj
+T* (Compare interpretation against zdb and native read-only import of disposable) Tj
+T* (images. Full RAIDZ/dRAID, ZAP/SA variant layouts, allocator log formats,) Tj
+T* (protected blocks and writer recovery remain separate research and test) Tj
+T* (requirements. The prior manual follows for provenance, not current provider) Tj
+T* (qualification.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 15 | Original format, not provider qualification) Tj ET
+
+%%Page
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (ZFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Historical reference appendix) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The earlier manual follows for provenance. Its provider and qualification) Tj
+T* (statements are historical; the new engineering chapters take precedence for) Tj
+T* (format interpretation.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 16 | Original format, not provider qualification) Tj ET
+
+%%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
 0.7 0.8 0.85 RG 0.7 w 50 50 m 545 50 l S
@@ -31,6 +327,7 @@ BT /F1 10.6 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 267.0 Tm (3. Allocation and director
 BT /F1 10.6 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 244.0 Tm (4. Integrity and recovery) Tj ET
 BT /F1 10.6 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 221.0 Tm (5. Design rationale and limitations) Tj ET
 BT /F1 10.6 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 198.0 Tm (6. InfiltratorOS integration boundary) Tj ET
+
 %%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -50,6 +347,7 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 565.0 Tm (filesystem volume. Snapsh
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 548.0 Tm (arrangements emerged from an integrated transactional model. Exact feature flags and pool) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 531.0 Tm (format capabilities must be read from the installed implementation; historical Solaris and) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 514.0 Tm (modern OpenZFS releases are not identical.) Tj ET
+
 %%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -69,6 +367,7 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 565.0 Tm (published parent pointers
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 548.0 Tm (uberblock. Dataset objects, metadata and indirect blocks form the logical namespace.) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 531.0 Tm (Physical block layout and redundancy cannot be inferred from filename paths or a) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 514.0 Tm (single-device offset.) Tj ET
+
 %%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -86,6 +385,7 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 599.0 Tm (Snapshots reference past 
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 582.0 Tm (physical blocks. Compression and deduplication change physical space consumption.) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 565.0 Tm (Copy-on-write metadata may increase write amplification for small random writes, but makes) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 548.0 Tm (block sharing and replication practical.) Tj ET
+
 %%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -104,6 +404,7 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 582.0 Tm (On import, ZFS chooses a 
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 565.0 Tm (pool view. Pools have labels and redundant copies of critical metadata, but pool import,) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 548.0 Tm (damaged-vdev recovery and resilvering are version- and topology-dependent. There is no) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 531.0 Tm (traditional fsck equivalent that rewrites all metadata for a classic non-COW image.) Tj ET
+
 %%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -121,6 +422,7 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 599.0 Tm (A single ZFS.so shared li
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 582.0 Tm (Pool import, device discovery, crash-consistent writing, resilvering, scrub, ARC) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 565.0 Tm (management, ZIL and vdev fault handling require much more than a parser that recognises an) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 548.0 Tm (uberblock.) Tj ET
+
 %%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -137,6 +439,7 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 628.0 Tm (generic kernel integratio
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 599.0 Tm (Defragmentation is especially different from classic FAT: the ZFS allocator owns future) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 582.0 Tm (physical placement. A generic promise to reserve an adjacent extent conflicts with) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 565.0 Tm (transaction, dataset and vdev placement behaviour.) Tj ET
+
 %%Page
 0.06 0.13 0.22 rg 0 750 595 92 re f
 0.03 0.53 0.58 rg 50 747 120 4 re f
@@ -157,6 +460,7 @@ BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 512.0 Tm (https://openzfs.github.io
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 483.0 Tm (The InfiltratorOS shared-object module, optional kernel adapter, native builder and) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 466.0 Tm (release-specific tests are a separate implementation. A successful document build or) Tj ET
 BT /F1 10.15 Tf 0.08 0.15 0.24 rg 1 0 0 1 50 449.0 Tm (package installation does not qualify physical writes, recovery, kernel mounting or boot.) Tj ET
+
 %%Page
 0.05 0.13 0.22 rg 0 749 595 93 re f
 0.01 0.52 0.56 rg 50 747 116 5 re f
@@ -182,6 +486,7 @@ BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 420 Tm (7. Distinguish data vdevs from
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 403.5 Tm (devices in a pool store the same kind of persistent user data.) Tj ET
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 377 Tm (8. Interpret ZAP objects, indirect blocks and bonus buffers in the context of each object) Tj ET
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 360.5 Tm (type. A generic B-tree parser cannot directly replace the ZFS object model.) Tj ET
+
 %%Page
 0.05 0.13 0.22 rg 0 749 595 93 re f
 0.01 0.52 0.56 rg 50 747 116 5 re f
@@ -207,6 +512,7 @@ BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 420 Tm (7. Snapshots and clones can re
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 403.5 Tm (lost merely because the current head dataset no longer references them.) Tj ET
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 377 Tm (8. Keep pool import, scrub, resilver and destructive repair separate. Each operates on) Tj ET
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 360.5 Tm (different evidence and carries different risk.) Tj ET
+
 %%Page
 0.05 0.13 0.22 rg 0 749 595 93 re f
 0.04 0.54 0.60 rg 50 747 115 4 re f
@@ -232,6 +538,7 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 458 Tm (is infiltrator_filesystem_ap
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 443 Tm (profile and operation masks and use bounded, partition-relative host I/O.) Tj ET
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 428 Tm (A source-level callback does not by itself establish that every format) Tj ET
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 413 Tm (variant or host profile is qualified.) Tj ET
+
 %%Page
 0.05 0.13 0.22 rg 0 749 595 93 re f
 0.04 0.54 0.60 rg 50 747 115 4 re f
