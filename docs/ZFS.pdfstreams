@@ -25,17 +25,17 @@ BT /F2 22 Tf 43 784 Td (ZFS - technical reference) Tj ET
 1 1 1 rg BT /F2 10 Tf 43 811 Td (INFILTRATOR / FILESYSTEM ENGINEERING) Tj ET
 BT /F2 22 Tf 43 784 Td (ZFS - technical reference) Tj ET
 0.08 0.14 0.20 rg BT /F2 15 Tf 43 736 Td (1. Scope and layers) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 706 Td (ZFS, originally developed at Sun Microsystems, integrates storage pooling, logical) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 692 Td (volume management and a copy-on-write filesystem. The on-disk pool is built from) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 678 Td (virtual devices \(vdevs\); the storage pool allocator manages blocks, the DMU manages) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 664 Td (objects and the dataset layer organizes filesystems and snapshots. A filesystem is) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (an object set, not a fixed partition inode table. This guide uses OpenZFS 2.2.7 as) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (a pinned layout reference. Feature flags, encryption, RAIDZ, dRAID, gang blocks and) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (indirect/removal mappings need distinct qualification.) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 598 Td (ZFS originated at Sun in the early 2000s, entered Solaris in 2005, and evolved into) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 584 Td (OpenZFS across multiple operating systems. Pooling, redundancy, snapshots and data) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 570 Td (verification are integral design concepts rather than add-ons to a conventional) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 556 Td (inode filesystem.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 706 Td (ZFS originated at Sun Microsystems in the early 2000s, entered Solaris in 2005) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 692 Td (and evolved into OpenZFS across multiple operating systems. It integrates) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 678 Td (storage pooling, logical volume management and a copy-on-write filesystem. The) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 664 Td (on-disk pool is built from virtual devices \(vdevs\); the storage pool allocator) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (manages blocks, the DMU manages objects and the dataset layer organizes) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (filesystems and snapshots. A filesystem is an object set, not a fixed partition) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (inode table. This guide uses OpenZFS 2.2.7 as a pinned layout reference.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 608 Td (Feature flags, encryption, RAIDZ, dRAID, gang blocks and indirect/removal) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 594 Td (mappings need distinct qualification.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 570 Td (Redundancy, snapshots and data verification are integral design concepts rather) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 556 Td (than add-ons to a conventional inode filesystem.) Tj ET
 0.2 0.3 0.4 rg BT /F1 9 Tf 43 32 Td (Historical development and engineering reference | 2) Tj ET
 
 %%Page
@@ -264,13 +264,14 @@ BT /F2 22 Tf 43 784 Td (ZFS - technical reference) Tj ET
 1 1 1 rg BT /F2 10 Tf 43 811 Td (INFILTRATOR / FILESYSTEM ENGINEERING) Tj ET
 BT /F2 22 Tf 43 784 Td (ZFS - technical reference) Tj ET
 0.08 0.14 0.20 rg BT /F2 15 Tf 43 736 Td (16. Sources and verification) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 706 Td (Primary pinned source: https://github.com/openzfs/zfs/tree/zfs-2.2.7/include/sys) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 692 Td (\(vdev_impl.h, uberblock_impl.h, spa.h, dnode.h, dmu_objset.h, dsl_dataset.h,) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 678 Td (zap_impl.h\). Algorithms in https://github.com/openzfs/zfs/tree/zfs-2.2.7/module/zfs) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 664 Td (. Validate native pools with multiple txgs, different ashift, fragmented objects,) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (holes, snapshots, corrupted redundant blocks and feature admission. Compare) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (interpretation against zdb and native read-only import of disposable images. Full) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (RAIDZ/dRAID, ZAP/SA variant layouts, allocator log formats, protected blocks and) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 608 Td (writer recovery remain separate research and test requirements. The prior manual) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 594 Td (follows for provenance, not current provider qualification.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 706 Td (Primary pinned source:) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 692 Td (https://github.com/openzfs/zfs/tree/zfs-2.2.7/include/sys \(vdev_impl.h,) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 678 Td (uberblock_impl.h, spa.h, dnode.h, dmu_objset.h, dsl_dataset.h, zap_impl.h\).) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 664 Td (Algorithms in https://github.com/openzfs/zfs/tree/zfs-2.2.7/module/zfs .) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (Validate native pools with multiple txgs, different ashift, fragmented objects,) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (holes, snapshots, corrupted redundant blocks and feature admission. Compare) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (interpretation against zdb and native read-only import of disposable images.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 608 Td (Full RAIDZ/dRAID, ZAP/SA variant layouts, allocator log formats, protected) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 594 Td (blocks and writer recovery remain separate research and test requirements.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 580 Td (Historical evidence is identified in Implementation and qualification boundary.) Tj ET
 0.2 0.3 0.4 rg BT /F1 9 Tf 43 32 Td (Historical development and engineering reference | 17) Tj ET

@@ -2,9 +2,9 @@
 
 ## Scope and layers
 
-ZFS, originally developed at Sun Microsystems, integrates storage pooling, logical volume management and a copy-on-write filesystem. The on-disk pool is built from virtual devices (vdevs); the storage pool allocator manages blocks, the DMU manages objects and the dataset layer organizes filesystems and snapshots. A filesystem is an object set, not a fixed partition inode table. This guide uses OpenZFS 2.2.7 as a pinned layout reference. Feature flags, encryption, RAIDZ, dRAID, gang blocks and indirect/removal mappings need distinct qualification.
+ZFS originated at Sun Microsystems in the early 2000s, entered Solaris in 2005 and evolved into OpenZFS across multiple operating systems. It integrates storage pooling, logical volume management and a copy-on-write filesystem. The on-disk pool is built from virtual devices (vdevs); the storage pool allocator manages blocks, the DMU manages objects and the dataset layer organizes filesystems and snapshots. A filesystem is an object set, not a fixed partition inode table. This guide uses OpenZFS 2.2.7 as a pinned layout reference. Feature flags, encryption, RAIDZ, dRAID, gang blocks and indirect/removal mappings need distinct qualification.
 
-ZFS originated at Sun in the early 2000s, entered Solaris in 2005, and evolved into OpenZFS across multiple operating systems. Pooling, redundancy, snapshots and data verification are integral design concepts rather than add-ons to a conventional inode filesystem.
+Redundancy, snapshots and data verification are integral design concepts rather than add-ons to a conventional inode filesystem.
 
 ## Physical labels and placement
 
@@ -68,4 +68,4 @@ Historical source reference: https://github.com/Infiltrator-Projects/Filesystem-
 
 ## Sources and verification
 
-Primary pinned source: https://github.com/openzfs/zfs/tree/zfs-2.2.7/include/sys (vdev_impl.h, uberblock_impl.h, spa.h, dnode.h, dmu_objset.h, dsl_dataset.h, zap_impl.h). Algorithms in https://github.com/openzfs/zfs/tree/zfs-2.2.7/module/zfs . Validate native pools with multiple txgs, different ashift, fragmented objects, holes, snapshots, corrupted redundant blocks and feature admission. Compare interpretation against zdb and native read-only import of disposable images. Full RAIDZ/dRAID, ZAP/SA variant layouts, allocator log formats, protected blocks and writer recovery remain separate research and test requirements. The prior manual follows for provenance, not current provider qualification.
+Primary pinned source: https://github.com/openzfs/zfs/tree/zfs-2.2.7/include/sys (vdev_impl.h, uberblock_impl.h, spa.h, dnode.h, dmu_objset.h, dsl_dataset.h, zap_impl.h). Algorithms in https://github.com/openzfs/zfs/tree/zfs-2.2.7/module/zfs . Validate native pools with multiple txgs, different ashift, fragmented objects, holes, snapshots, corrupted redundant blocks and feature admission. Compare interpretation against zdb and native read-only import of disposable images. Full RAIDZ/dRAID, ZAP/SA variant layouts, allocator log formats, protected blocks and writer recovery remain separate research and test requirements. Historical evidence is identified in Implementation and qualification boundary.
