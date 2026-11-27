@@ -4,6 +4,8 @@
 
 ZFS, originally developed at Sun Microsystems, integrates storage pooling, logical volume management and a copy-on-write filesystem. The on-disk pool is built from virtual devices (vdevs); the storage pool allocator manages blocks, the DMU manages objects and the dataset layer organizes filesystems and snapshots. A filesystem is an object set, not a fixed partition inode table. This guide uses OpenZFS 2.2.7 as a pinned layout reference. Feature flags, encryption, RAIDZ, dRAID, gang blocks and indirect/removal mappings need distinct qualification.
 
+ZFS originated at Sun in the early 2000s, entered Solaris in 2005, and evolved into OpenZFS across multiple operating systems. Pooling, redundancy, snapshots and data verification are integral design concepts rather than add-ons to a conventional inode filesystem.
+
 ## Physical labels and placement
 
 Each leaf vdev has four 256 KiB labels: offsets 0, 256 KiB, aligned device size minus 512 KiB and minus 256 KiB. Device size for this calculation is rounded down to label alignment. Label layout: 8 KiB reserved at 0; 8 KiB boot environment at 8192; 112 KiB vdev physical configuration at 16384; 128 KiB uberblock ring at 131072. Configuration includes a packed nvlist and embedded checksum trailer. The first two labels plus a 3.5 MiB boot region occupy 4 MiB. The last two labels reserve 512 KiB. Validate all available labels; do not assume the first label is authoritative.
@@ -55,6 +57,14 @@ Top-level vdevs divide their address space into metaslabs. Space-map objects enc
 ## Transaction groups and recovery
 
 ZFS batches changes in transaction groups. Sync writes new blocks and metadata before publishing a new uberblock referring to the coherent MOS. Old referenced blocks must not be freed prematurely. The ZFS Intent Log provides recovery for applicable synchronous operations not yet committed in the main txg; it is not a general redo log for every metadata write. Replay requires record-type-specific validation and safe import ownership. A checkpoint is a retained pool state, distinct from a dataset snapshot. Scrub checks and repairs through verified redundancy; it is not the same as arbitrary offline fsck reconstruction.
+
+## Implementation and qualification boundary
+
+Historical revision ee1683008e85 implemented native pool label and uberblock probing, with checksummed XDR configurations and 512-byte/4 KiB transfer support. It declared CORE probe and hosted VOLUME format; cancellation was documented. Dataset mounting, namespace traversal, file reads, arbitrary pool writes and vdev topology/recovery were not established by those declarations.
+
+Common V2 is the independent provider interface: https://github.com/Infiltrator-Projects/Libraries/blob/main/docs/FILESYSTEM_COMMON_ABI_V2.md . Negotiate real operation masks and media profiles. Use bounded host I/O, exclusive unmounted ownership and durable flush for mutation; distinguish unsupported, corrupt, I/O and stale-handle results. Test Media and Defragmenter use the same engine only for supported operations. Hosted, freestanding, BOOT, kernel, recovery and package qualification are independent. Current capability and release status belongs to the repository README and exact-source qualification records; historical evidence is not a current status claim.
+
+Historical source reference: https://github.com/Infiltrator-Projects/Filesystem-ZFS/tree/ee1683008e85 .
 
 ## Sources and verification
 
