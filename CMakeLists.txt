@@ -115,10 +115,10 @@ add_custom_command(
  OUTPUT "${ZFS_GENERATED_PDF}"
  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/standalone/generate_manual.py"
          "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
-         "${CMAKE_CURRENT_SOURCE_DIR}/docs/ZFS.pages"
+         "${CMAKE_CURRENT_SOURCE_DIR}/docs/ZFS.pdfstreams"
          "${ZFS_GENERATED_PDF}"
  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
-         "${CMAKE_CURRENT_SOURCE_DIR}/docs/ZFS.pages"
+         "${CMAKE_CURRENT_SOURCE_DIR}/docs/ZFS.pdfstreams"
          "${CMAKE_CURRENT_SOURCE_DIR}/standalone/manual.py"
          "${CMAKE_CURRENT_SOURCE_DIR}/standalone/generate_manual.py"
  VERBATIM)
